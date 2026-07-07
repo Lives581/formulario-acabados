@@ -334,19 +334,30 @@
   const $=id=>document.getElementById(id);
 
   // --- Cargar catálogo (trabajadores, módulos por área, tabla STD) ---
-  fetch(URL_APPS_SCRIPT + '?accion=catalogo')
-    .then(r => r.json())
-    .then(data => {
-      trabajadores = data.trabajadores || {};
-      modulosPorArea = data.modulos || {};
-      stdTabla = data.std || [];
-      poblarModulos();
-      console.log('Catálogo cargado OK:', Object.keys(trabajadores).length, 'trabajadores,', stdTabla.length, 'filas STD');
-    })
-    .catch(err => {
-      console.error('ERROR REAL cargando catálogo:', err);
-      $('modulo').innerHTML = '<option value="">Error cargando módulos</option>';
-    });
+  function cargarCatalogo(reintento) {
+    fetch(URL_APPS_SCRIPT + '?accion=catalogo')
+      .then(r => r.json())
+      .then(data => {
+        trabajadores = data.trabajadores || {};
+        modulosPorArea = data.modulos || {};
+        stdTabla = data.std || [];
+        poblarModulos();
+        console.log('Catálogo cargado OK:', Object.keys(trabajadores).length, 'trabajadores,', stdTabla.length, 'filas STD');
+      })
+      .catch(err => {
+        console.error('ERROR REAL cargando catálogo:', err);
+        if (!reintento) {
+          // Primer intento falló -- puede ser el "cold start" de Apps Script
+          // (el servidor tarda en despertar tras estar inactivo). Reintenta
+          // una vez solo, automático, antes de avisar que algo está mal de verdad.
+          $('modulo').innerHTML = '<option value="">Conectando, un momento...</option>';
+          setTimeout(() => cargarCatalogo(true), 4000);
+        } else {
+          $('modulo').innerHTML = '<option value="">Error cargando módulos — recarga la página</option>';
+        }
+      });
+  }
+  cargarCatalogo(false);
 
   function poblarModulos() {
     const area = $('area').value;
@@ -437,7 +448,11 @@
   }
   function detectarStd(area, clave) {
     if (!clave) return null;
-    if (area === 'PLANCHA') return buscarPorEstiloColF(clave);
+    if (area === 'PLANCHA') {
+      const c = clave.trim().toUpperCase();
+      if (!['R','A','B','C'].includes(c)) return null; // PLANCHA solo usa estas 4 categorías
+      return buscarPorEstiloColF(c);
+    }
     if (area === 'VAPOR') return buscarPorEstiloColD(clave);
     if (area === 'DOBLADO') { const v = buscarPorEstiloColF(clave); return v != null ? v : buscarClienteDob(clave); }
     if (area === 'ENCAJADO') { const nivel = buscarNivelPorEstilo(clave); return nivel == null ? null : buscarStdPorNivel(nivel); }
@@ -449,6 +464,7 @@
     if (!clave) { div.textContent = ''; div.className = 'std-detectado'; return; }
     const std = detectarStd($('area').value, clave);
     if (std != null && std !== '') { div.textContent = `STD detectado: ${std}`; div.className = 'std-detectado ok'; }
+    else if ($('area').value === 'PLANCHA') { div.textContent = 'PLANCHA solo usa R, A, B o C — escribe una de esas 4 letras.'; div.className = 'std-detectado error'; }
     else { div.textContent = 'No se encontró STD para esa clave — usa STD manual o revisa la clave.'; div.className = 'std-detectado error'; }
   }
   $('p-clave').addEventListener('input', actualizarStd);
@@ -513,7 +529,7 @@
           mostrarAviso(tipo, res.error || 'Error al guardar.', true);
         }
       })
-      .catch(() => mostrarAviso(tipo, 'No se pudo conectar. Revisa tu internet.', true))
+      .catch(() => mostrarAviso(tipo, 'No se confirmó la respuesta (puede tardar la primera vez). Antes de reintentar, revisa el Sheet — quizá sí se guardó y reintentar duplicaría la fila.', true))
       .finally(() => {
         btn.disabled = false;
         btn.textContent = textoOriginal;
@@ -524,7 +540,7 @@
     const div = document.getElementById('aviso-' + tipo);
     div.textContent = mensaje;
     div.className = 'aviso ' + (esError ? 'error' : 'ok');
-    setTimeout(() => { div.className = 'aviso'; }, 2500);
+    setTimeout(() => { div.className = 'aviso'; }, esError ? 8000 : 2500);
   }
 
   function limpiarFormulario(tipo) {
