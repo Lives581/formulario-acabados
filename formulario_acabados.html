@@ -69,7 +69,46 @@
   .integrantes-box.visible { display: block; }
   .integrantes-box .label { font-size: 12px; color: var(--gris); margin-bottom: 6px; }
   .integrantes-box .nombres { font-size: 15px; font-weight: bold; color: var(--petroleo); }
-  .integrantes-box .nombres.error { color: var(--alerta); font-weight: normal; font-size: 13px; }
+  .integrantes-box .colaborador-mini {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .integrantes-box .colaborador-mini input {
+    flex: 1;
+    font-size: 15px;
+    padding: 8px 10px;
+    border: 1px solid #d8dede;
+    border-radius: 6px;
+    text-transform: uppercase;
+  }
+  .integrantes-box .colaborador-mini input:focus {
+    outline: 2px solid var(--esmeralda);
+    border-color: var(--esmeralda);
+  }
+  .integrantes-box .nombre-mini {
+    font-size: 12px;
+    min-width: 110px;
+    max-width: 140px;
+  }
+  .integrantes-box .nombre-mini.ok { color: var(--esmeralda); font-weight: bold; }
+  .integrantes-box .nombre-mini.error { color: var(--alerta); }
+  .integrantes-box .quitar-mini {
+    background: none; border: none; color: var(--alerta);
+    font-size: 16px; cursor: pointer; padding: 4px;
+  }
+  button.agregar-colaborador {
+    width: 100%;
+    background: #fff;
+    border: 1px dashed var(--esmeralda);
+    color: var(--esmeralda);
+    padding: 8px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+  }
 
   nav.tabs {
     display: flex;
@@ -205,9 +244,10 @@
     </div>
   </div>
 
-  <div class="integrantes-box" id="integrantes-box">
-    <div class="label">Integrantes de este módulo</div>
-    <div class="nombres" id="integrantes-nombres"></div>
+  <div class="integrantes-box visible" id="integrantes-box">
+    <div class="label">Integrantes de este módulo (escribe el código de cada uno)</div>
+    <div id="colaboradores-modulo"></div>
+    <button type="button" class="agregar-colaborador" id="btn-agregar-colaborador">+ Agregar otro colaborador</button>
   </div>
 
   <nav class="tabs">
@@ -312,31 +352,51 @@
     const area = $('area').value;
     const lista = modulosPorArea[area] || [];
     $('modulo').innerHTML = lista.map(m => `<option value="${m.modulo}">${m.modulo}</option>`).join('');
-    mostrarIntegrantes();
   }
 
-  function mostrarIntegrantes() {
-    const area = $('area').value;
-    const modSel = $('modulo').value;
-    const lista = modulosPorArea[area] || [];
-    const info = lista.find(m => m.modulo === modSel);
-    const box = $('integrantes-box');
-    const nombresDiv = $('integrantes-nombres');
-    if (!info) { box.classList.remove('visible'); return; }
-    box.classList.add('visible');
-    if (info.integrantes.length === 0) {
-      nombresDiv.textContent = 'Sin integrantes activos en este módulo — revisa TRABAJADORES.';
-      nombresDiv.className = 'nombres error';
-    } else {
-      nombresDiv.textContent = info.integrantes.join(' · ');
-      nombresDiv.className = 'nombres';
-    }
+  // --- Bloques editables de colaborador dentro del módulo (código -> nombre detectado) ---
+  function crearBloqueColaboradorMini(indice) {
+    const div = document.createElement('div');
+    div.className = 'colaborador-mini';
+    div.dataset.indice = indice;
+    div.innerHTML = `
+      <input type="text" class="cod-colaborador" placeholder="Ej: O-9145" autocomplete="off">
+      <span class="nombre-mini"></span>
+      ${indice > 0 ? '<button type="button" class="quitar-mini" title="Quitar">✕</button>' : ''}
+    `;
+    const input = div.querySelector('.cod-colaborador');
+    const nombreSpan = div.querySelector('.nombre-mini');
+    input.addEventListener('input', () => {
+      const cod = input.value.trim().toUpperCase();
+      input.value = cod;
+      if (!cod) { nombreSpan.textContent = ''; nombreSpan.className = 'nombre-mini'; return; }
+      const t = trabajadores[cod];
+      if (t) { nombreSpan.textContent = t.nombre; nombreSpan.className = 'nombre-mini ok'; }
+      else { nombreSpan.textContent = '¿No existe?'; nombreSpan.className = 'nombre-mini error'; }
+    });
+    const quitar = div.querySelector('.quitar-mini');
+    if (quitar) quitar.addEventListener('click', () => div.remove());
+    return div;
+  }
+  function agregarColaboradorMini() {
+    const contenedor = $('colaboradores-modulo');
+    const indice = contenedor.children.length;
+    contenedor.appendChild(crearBloqueColaboradorMini(indice));
+  }
+  function reiniciarColaboradoresMini() {
+    $('colaboradores-modulo').innerHTML = '';
+    agregarColaboradorMini();
+    agregarColaboradorMini();
+  }
+  $('btn-agregar-colaborador').addEventListener('click', agregarColaboradorMini);
+  function obtenerCodigosColaboradores() {
+    return Array.from(document.querySelectorAll('.cod-colaborador'))
+      .map(i => i.value.trim().toUpperCase())
+      .filter(v => v);
   }
 
   $('area').addEventListener('change', () => { poblarModulos(); actualizarPestanasPorArea(); });
-  $('modulo').addEventListener('change', mostrarIntegrantes);
-
-  // --- Tabs ---
+  reiniciarColaboradoresMini();
   const tabs = document.querySelectorAll('nav.tabs button');
   tabs.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -414,13 +474,16 @@
       const stdManual = $('p-std').value;
       const improd = $('p-improd').value;
       const apoyo = $('p-apoyo').value;
+      const integrantes = obtenerCodigosColaboradores();
       if (!clave || !cant) { mostrarAviso(tipo, 'Completa estilo y cantidad.', true); return; }
+      if (integrantes.length === 0) { mostrarAviso(tipo, 'Escribe el código de al menos un colaborador.', true); return; }
       payload.clave = clave;
       payload.cant = Number(cant);
       payload.stdManual = stdManual ? Number(stdManual) : '';
       payload.improd = improd ? Number(improd) : '';
       payload.apoyo = apoyo ? Number(apoyo) : '';
-      etiqueta = `${modulo} · ${clave} · ${cant} pdas`;
+      payload.integrantes = integrantes;
+      etiqueta = `${modulo} (${integrantes.join(', ')}) · ${clave} · ${cant} pdas`;
     } else if (tipo === 'sistema') {
       const estilo = $('s-estilo').value.trim();
       const cant = $('s-cant').value;
@@ -443,7 +506,7 @@
       .then(r => r.json())
       .then(res => {
         if (res.ok) {
-          mostrarAviso(tipo, 'Guardado.', false);
+          mostrarAviso(tipo, res.aviso ? ('Guardado. ' + res.aviso) : 'Guardado.', !!res.aviso);
           agregarALista(tipo, etiqueta);
           limpiarFormulario(tipo);
         } else {
@@ -469,6 +532,7 @@
       $('p-clave').value = ''; $('p-cant').value = ''; $('p-std').value = '';
       $('p-improd').value = ''; $('p-apoyo').value = '';
       $('p-std-detectado').textContent = ''; $('p-std-detectado').className = 'std-detectado';
+      reiniciarColaboradoresMini();
     } else if (tipo === 'sistema') {
       $('s-estilo').value = ''; $('s-cant').value = '';
     } else if (tipo === 'rechazo') {
