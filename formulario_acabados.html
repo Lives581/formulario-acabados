@@ -58,6 +58,19 @@
   }
   .barra-fecha .campo { flex: 1; min-width: 130px; }
 
+  .integrantes-box {
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: none;
+  }
+  .integrantes-box.visible { display: block; }
+  .integrantes-box .label { font-size: 12px; color: var(--gris); margin-bottom: 6px; }
+  .integrantes-box .nombres { font-size: 15px; font-weight: bold; color: var(--petroleo); }
+  .integrantes-box .nombres.error { color: var(--alerta); font-weight: normal; font-size: 13px; }
+
   nav.tabs {
     display: flex;
     gap: 6px;
@@ -93,23 +106,6 @@
   }
   .panel.activo { display: block; }
 
-  .bloque-colaborador {
-    border: 1px solid #e2e8e6;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-    position: relative;
-  }
-  .bloque-colaborador .num-colaborador {
-    font-size: 11px; color: var(--gris); font-weight: bold;
-    text-transform: uppercase; letter-spacing: .4px; margin-bottom: 8px;
-  }
-  .bloque-colaborador button.quitar {
-    position: absolute; top: 8px; right: 8px;
-    background: none; border: none; color: var(--alerta);
-    font-size: 18px; cursor: pointer; line-height: 1; padding: 4px;
-  }
-
   .campo-grupo { margin-bottom: 12px; }
   .campo-grupo label { font-size: 13px; color: var(--gris); display: block; margin-bottom: 4px; }
   .campo-grupo input, .campo-grupo select {
@@ -126,15 +122,6 @@
   .fila-doble { display: flex; gap: 10px; }
   .fila-doble > div { flex: 1; }
 
-  .nombre-detectado {
-    font-size: 13px;
-    margin-top: -6px;
-    margin-bottom: 12px;
-    min-height: 18px;
-  }
-  .nombre-detectado.ok { color: var(--esmeralda); }
-  .nombre-detectado.error { color: var(--alerta); }
-
   .std-detectado {
     font-size: 12px;
     color: var(--gris);
@@ -144,19 +131,6 @@
   }
   .std-detectado.ok { color: var(--petroleo); font-weight: bold; }
   .std-detectado.error { color: var(--alerta); }
-
-  button.agregar-colaborador {
-    width: 100%;
-    background: #fff;
-    border: 1px dashed var(--esmeralda);
-    color: var(--esmeralda);
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-bottom: 12px;
-  }
 
   button.guardar {
     width: 100%;
@@ -184,9 +158,7 @@
   .aviso.ok { display: block; background: #e6f7f1; color: var(--petroleo); }
   .aviso.error { display: block; background: #fdecea; color: var(--alerta); }
 
-  .lista-hoy {
-    margin-top: 18px;
-  }
+  .lista-hoy { margin-top: 18px; }
   .lista-hoy h3 { font-size: 13px; color: var(--gris); margin-bottom: 8px; }
   .item-hoy {
     background: #fff;
@@ -200,12 +172,7 @@
   }
   .item-hoy .tipo { color: var(--gris); font-size: 11px; }
 
-  footer {
-    text-align: center;
-    font-size: 11px;
-    color: var(--gris);
-    padding: 20px;
-  }
+  footer { text-align: center; font-size: 11px; color: var(--gris); padding: 20px; }
 </style>
 </head>
 <body>
@@ -232,43 +199,62 @@
         <option value="ENCAJADO">ENCAJADO</option>
       </select>
     </div>
+    <div class="campo">
+      <label for="modulo">Módulo</label>
+      <select id="modulo"><option value="">Cargando...</option></select>
+    </div>
+  </div>
+
+  <div class="integrantes-box" id="integrantes-box">
+    <div class="label">Integrantes de este módulo</div>
+    <div class="nombres" id="integrantes-nombres"></div>
   </div>
 
   <nav class="tabs">
     <button data-tab="produccion" class="activo">Producción</button>
-    <button data-tab="tiempos">Tiempos</button>
     <button data-tab="sistema" class="oculto">Sistema</button>
     <button data-tab="rechazo" class="oculto">Rechazo</button>
   </nav>
 
-  <!-- PRODUCCIÓN -->
+  <!-- PRODUCCIÓN POR MÓDULO (unifica cantidad + improductivos, total del módulo) -->
   <section class="panel activo" id="panel-produccion">
-    <div id="colaboradores-produccion"></div>
-    <button class="agregar-colaborador" data-destino="produccion">+ Agregar otro colaborador</button>
-    <button class="guardar" data-tipo="produccion">Guardar producción</button>
-    <div class="aviso" id="aviso-produccion"></div>
-  </section>
-
-  <!-- TIEMPOS -->
-  <section class="panel" id="panel-tiempos">
-    <div id="colaboradores-tiempos"></div>
-    <button class="agregar-colaborador" data-destino="tiempos">+ Agregar otro colaborador</button>
-    <button class="guardar" data-tipo="tiempos">Guardar tiempos</button>
-    <div class="aviso" id="aviso-tiempos"></div>
+    <div class="campo-grupo">
+      <label>Estilo (clave / categoría / cliente)</label>
+      <input type="text" id="p-clave" placeholder="Ej: 25175, R, A, EFI...">
+    </div>
+    <div class="std-detectado" id="p-std-detectado"></div>
+    <div class="fila-doble">
+      <div class="campo-grupo">
+        <label>Cantidad (total del módulo)</label>
+        <input type="number" id="p-cant" min="0" inputmode="numeric">
+      </div>
+      <div class="campo-grupo">
+        <label>STD manual (solo si difiere del detectado)</label>
+        <input type="number" id="p-std" min="0" step="0.01" inputmode="decimal">
+      </div>
+    </div>
+    <div class="fila-doble">
+      <div class="campo-grupo">
+        <label>Improductivo (min, total del módulo)</label>
+        <input type="number" id="p-improd" min="0" inputmode="numeric">
+      </div>
+      <div class="campo-grupo">
+        <label>Apoyo módulo (min, opcional)</label>
+        <input type="number" id="p-apoyo" min="0" inputmode="numeric">
+      </div>
+    </div>
+    <button class="guardar" data-tipo="produccionModulo">Guardar producción del módulo</button>
+    <div class="aviso" id="aviso-produccionModulo"></div>
   </section>
 
   <!-- SISTEMA DOB -->
   <section class="panel" id="panel-sistema">
     <div class="campo-grupo">
-      <label for="s-modulo">Módulo</label>
-      <select id="s-modulo"></select>
-    </div>
-    <div class="campo-grupo">
-      <label for="s-estilo">Estilo</label>
+      <label>Estilo</label>
       <input type="text" id="s-estilo" placeholder="Ej: 25175" inputmode="numeric">
     </div>
     <div class="campo-grupo">
-      <label for="s-cant">Cantidad</label>
+      <label>Cantidad</label>
       <input type="number" id="s-cant" min="0" inputmode="numeric">
     </div>
     <button class="guardar" data-tipo="sistema">Agregar producción sistema</button>
@@ -278,11 +264,7 @@
   <!-- RECHAZO -->
   <section class="panel" id="panel-rechazo">
     <div class="campo-grupo">
-      <label for="r-modulo">Módulo</label>
-      <select id="r-modulo"></select>
-    </div>
-    <div class="campo-grupo">
-      <label for="r-cant">Prendas rechazadas</label>
+      <label>Prendas rechazadas</label>
       <input type="number" id="r-cant" min="0" inputmode="numeric">
     </div>
     <button class="guardar" data-tipo="rechazo">Agregar rechazo</button>
@@ -302,32 +284,57 @@
   // ⚠️ Pegar aquí la URL del Web App de Apps Script tras desplegarlo
   const URL_APPS_SCRIPT = 'https://script.google.com/macros/s/AKfycbx_RVCdk3GSyPjTRCxRDsIcSELk1bAMyDK2khgSZGPoPVrTwxYHFXRd_TspcnpbabvNFg/exec';
 
-  let trabajadores = {};   // { 'O-9145': {nombre, area, modulo} }
-  let modulosDob = [];     // ['DOB-M1', ...]
-  let stdTabla = [];       // filas crudas de la hoja STD
+  let trabajadores = {};
+  let modulosPorArea = {};  // { PLANCHA: [{modulo:'PL-1', integrantes:[...]}], ... }
+  let stdTabla = [];
   let contador = 0;
-  let contadorColaboradores = { produccion: 0, tiempos: 0 };
 
   const hoy = new Date();
   document.getElementById('fecha').value = hoy.toISOString().slice(0,10);
+  const $=id=>document.getElementById(id);
 
-  // --- Cargar catálogo (trabajadores, módulos, tabla STD) al abrir ---
+  // --- Cargar catálogo (trabajadores, módulos por área, tabla STD) ---
   fetch(URL_APPS_SCRIPT + '?accion=catalogo')
     .then(r => r.json())
     .then(data => {
       trabajadores = data.trabajadores || {};
-      modulosDob = data.modulos || [];
+      modulosPorArea = data.modulos || {};
       stdTabla = data.std || [];
-      const selects = [document.getElementById('s-modulo'), document.getElementById('r-modulo')];
-      selects.forEach(sel => {
-        sel.innerHTML = modulosDob.map(m => `<option value="${m}">${m}</option>`).join('');
-      });
+      poblarModulos();
       console.log('Catálogo cargado OK:', Object.keys(trabajadores).length, 'trabajadores,', stdTabla.length, 'filas STD');
     })
     .catch(err => {
       console.error('ERROR REAL cargando catálogo:', err);
-      console.error('Mensaje:', err.message);
+      $('modulo').innerHTML = '<option value="">Error cargando módulos</option>';
     });
+
+  function poblarModulos() {
+    const area = $('area').value;
+    const lista = modulosPorArea[area] || [];
+    $('modulo').innerHTML = lista.map(m => `<option value="${m.modulo}">${m.modulo}</option>`).join('');
+    mostrarIntegrantes();
+  }
+
+  function mostrarIntegrantes() {
+    const area = $('area').value;
+    const modSel = $('modulo').value;
+    const lista = modulosPorArea[area] || [];
+    const info = lista.find(m => m.modulo === modSel);
+    const box = $('integrantes-box');
+    const nombresDiv = $('integrantes-nombres');
+    if (!info) { box.classList.remove('visible'); return; }
+    box.classList.add('visible');
+    if (info.integrantes.length === 0) {
+      nombresDiv.textContent = 'Sin integrantes activos en este módulo — revisa TRABAJADORES.';
+      nombresDiv.className = 'nombres error';
+    } else {
+      nombresDiv.textContent = info.integrantes.join(' · ');
+      nombresDiv.className = 'nombres';
+    }
+  }
+
+  $('area').addEventListener('change', () => { poblarModulos(); actualizarPestanasPorArea(); });
+  $('modulo').addEventListener('change', mostrarIntegrantes);
 
   // --- Tabs ---
   const tabs = document.querySelectorAll('nav.tabs button');
@@ -340,256 +347,90 @@
     });
   });
 
-  // --- Mostrar/ocultar pestañas SISTEMA y RECHAZO según área ---
-  const areaSelect = document.getElementById('area');
   function actualizarPestanasPorArea() {
-    const esDoblado = areaSelect.value === 'DOBLADO';
+    const esDoblado = $('area').value === 'DOBLADO';
     document.querySelector('[data-tab="sistema"]').classList.toggle('oculto', !esDoblado);
     document.querySelector('[data-tab="rechazo"]').classList.toggle('oculto', !esDoblado);
-    // Recalcular STD detectado de todos los bloques de producción abiertos (cambia por área)
-    document.querySelectorAll('#colaboradores-produccion .bloque-colaborador').forEach(actualizarStdDeBloque);
-    // Mostrar/ocultar Apoyo Módulo en los bloques de tiempos ya creados
-    document.querySelectorAll('#colaboradores-tiempos .bloque-colaborador').forEach(actualizarVisibilidadApoyo);
+    actualizarStd();
   }
-  areaSelect.addEventListener('change', actualizarPestanasPorArea);
 
-  // --- Detección de STD por clave/estilo, replica la lógica de REGISTRO!J ---
-  // STD columnas (0-indexado): A=0 ESTILO B=1 CLIENTE C=2 T.TOTAL D=3 T.VAP
-  //   E=4 T.PLANCHA F=5 T.DOB/EMB G=6 OBSERVACIONES ... I=8 CLIENTE J=9 STD
-  //   K=10 DESEMB L=11 T.TOTAL ... N=13 ESTILO O=14 NIVEL ... Q=16 NIVEL R=17 STD
+  // --- Detección de STD por clave/estilo, replica la lógica de REGISTRO!J / PRODUCCION MODULO!H ---
   function buscarPorEstiloColF(clave) {
-    // VLOOKUP(clave, STD!A:F, 6) -- misma columna que usa REGISTRO!J para PLANCHA y DOBLADO
-    for (let i = 1; i < stdTabla.length; i++) {
-      if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][5]; // col F
-    }
+    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][5];
     return null;
   }
   function buscarPorEstiloColD(clave) {
-    // VAPOR: VLOOKUP(clave, STD!A:F, 4) -- columna D (T.VAP)
-    for (let i = 1; i < stdTabla.length; i++) {
-      if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][3];
-    }
+    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][3];
     return null;
   }
   function buscarClienteDob(clave) {
-    // DOBLADO fallback por código de cliente: VLOOKUP(clave, STD!I:L, 4) -- columna L (T.TOTAL)
-    for (let i = 1; i < stdTabla.length; i++) {
-      if (String(stdTabla[i][8]) === String(clave)) return stdTabla[i][11];
-    }
+    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][8]) === String(clave)) return stdTabla[i][11];
     return null;
   }
   function buscarNivelPorEstilo(clave) {
-    // ENCAJADO paso 1: VLOOKUP(clave, STD!N:O, 2) -- columna O (NIVEL)
-    for (let i = 1; i < stdTabla.length; i++) {
-      if (String(stdTabla[i][13]) === String(clave)) return stdTabla[i][14];
-    }
+    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][13]) === String(clave)) return stdTabla[i][14];
     return null;
   }
   function buscarStdPorNivel(nivel) {
-    // ENCAJADO paso 2: VLOOKUP(nivel, STD!Q:R, 2) -- columna R (STD)
-    for (let i = 1; i < stdTabla.length; i++) {
-      if (String(stdTabla[i][16]) === String(nivel)) return stdTabla[i][17];
-    }
+    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][16]) === String(nivel)) return stdTabla[i][17];
     return null;
   }
   function detectarStd(area, clave) {
     if (!clave) return null;
     if (area === 'PLANCHA') return buscarPorEstiloColF(clave);
     if (area === 'VAPOR') return buscarPorEstiloColD(clave);
-    if (area === 'DOBLADO') {
-      const v = buscarPorEstiloColF(clave);
-      return v != null ? v : buscarClienteDob(clave);
-    }
-    if (area === 'ENCAJADO') {
-      const nivel = buscarNivelPorEstilo(clave);
-      if (nivel == null) return null;
-      return buscarStdPorNivel(nivel);
-    }
+    if (area === 'DOBLADO') { const v = buscarPorEstiloColF(clave); return v != null ? v : buscarClienteDob(clave); }
+    if (area === 'ENCAJADO') { const nivel = buscarNivelPorEstilo(clave); return nivel == null ? null : buscarStdPorNivel(nivel); }
     return null;
   }
-
-  // --- Bloques de colaborador repetibles (Producción y Tiempos) ---
-  function crearBloqueProduccion(indice) {
-    const div = document.createElement('div');
-    div.className = 'bloque-colaborador';
-    div.dataset.indice = indice;
-    div.innerHTML = `
-      ${indice > 0 ? '<button type="button" class="quitar" title="Quitar">✕</button>' : ''}
-      <div class="num-colaborador">Colaborador ${indice + 1}</div>
-      <div class="campo-grupo">
-        <label>Código de trabajador</label>
-        <input type="text" class="p-cod" placeholder="Ej: O-9145" autocomplete="off">
-      </div>
-      <div class="nombre-detectado"></div>
-      <div class="campo-grupo">
-        <label>Clave (estilo / categoría / cliente)</label>
-        <input type="text" class="p-clave" placeholder="Ej: 25175, R, A, EFI...">
-      </div>
-      <div class="fila-doble">
-        <div class="campo-grupo">
-          <label>Cantidad</label>
-          <input type="number" class="p-cant" min="0" inputmode="numeric">
-        </div>
-        <div class="campo-grupo">
-          <label>STD manual (solo si difiere del detectado)</label>
-          <input type="number" class="p-std" min="0" step="0.01" inputmode="decimal">
-        </div>
-      </div>
-      <div class="std-detectado"></div>
-    `;
-    const codInput = div.querySelector('.p-cod');
-    const claveInput = div.querySelector('.p-clave');
-    codInput.addEventListener('input', () => detectarNombreEnBloque(div, codInput));
-    claveInput.addEventListener('input', () => actualizarStdDeBloque(div));
-    const quitar = div.querySelector('.quitar');
-    if (quitar) quitar.addEventListener('click', () => div.remove());
-    return div;
+  function actualizarStd() {
+    const div = $('p-std-detectado');
+    const clave = $('p-clave').value.trim();
+    if (!clave) { div.textContent = ''; div.className = 'std-detectado'; return; }
+    const std = detectarStd($('area').value, clave);
+    if (std != null && std !== '') { div.textContent = `STD detectado: ${std}`; div.className = 'std-detectado ok'; }
+    else { div.textContent = 'No se encontró STD para esa clave — usa STD manual o revisa la clave.'; div.className = 'std-detectado error'; }
   }
+  $('p-clave').addEventListener('input', actualizarStd);
 
-  function crearBloqueTiempos(indice) {
-    const div = document.createElement('div');
-    div.className = 'bloque-colaborador';
-    div.dataset.indice = indice;
-    div.innerHTML = `
-      ${indice > 0 ? '<button type="button" class="quitar" title="Quitar">✕</button>' : ''}
-      <div class="num-colaborador">Colaborador ${indice + 1}</div>
-      <div class="campo-grupo">
-        <label>Código de trabajador</label>
-        <input type="text" class="t-cod" placeholder="Ej: O-9145" autocomplete="off">
-      </div>
-      <div class="nombre-detectado"></div>
-      <div class="fila-doble">
-        <div class="campo-grupo">
-          <label>Improductivo (min)</label>
-          <input type="number" class="t-improd" min="0" inputmode="numeric">
-        </div>
-        <div class="campo-grupo t-apoyo-wrap">
-          <label>Apoyo módulo (min)</label>
-          <input type="number" class="t-apoyo" min="0" inputmode="numeric">
-        </div>
-      </div>
-    `;
-    const codInput = div.querySelector('.t-cod');
-    codInput.addEventListener('input', () => detectarNombreEnBloque(div, codInput));
-    const quitar = div.querySelector('.quitar');
-    if (quitar) quitar.addEventListener('click', () => div.remove());
-    actualizarVisibilidadApoyo(div);
-    return div;
-  }
-
-  function detectarNombreEnBloque(bloque, input) {
-    const nombreDiv = bloque.querySelector('.nombre-detectado');
-    const cod = input.value.trim().toUpperCase();
-    input.value = cod;
-    if (!cod) { nombreDiv.textContent = ''; nombreDiv.className = 'nombre-detectado'; return; }
-    const t = trabajadores[cod];
-    if (t) {
-      nombreDiv.textContent = `${t.nombre} — ${t.area}`;
-      nombreDiv.className = 'nombre-detectado ok';
-    } else {
-      nombreDiv.textContent = '¿Código no encontrado? Revisa en TRABAJADORES.';
-      nombreDiv.className = 'nombre-detectado error';
-    }
-  }
-
-  function actualizarStdDeBloque(bloque) {
-    const claveInput = bloque.querySelector('.p-clave');
-    if (!claveInput) return;
-    const stdDiv = bloque.querySelector('.std-detectado');
-    const area = areaSelect.value;
-    const clave = claveInput.value.trim();
-    if (!clave) { stdDiv.textContent = ''; stdDiv.className = 'std-detectado'; return; }
-    const std = detectarStd(area, clave);
-    if (std != null && std !== '') {
-      stdDiv.textContent = `STD detectado: ${std}`;
-      stdDiv.className = 'std-detectado ok';
-    } else {
-      stdDiv.textContent = 'No se encontró STD para esa clave — usa STD manual o revisa la clave.';
-      stdDiv.className = 'std-detectado error';
-    }
-  }
-
-  function actualizarVisibilidadApoyo(bloque) {
-    const wrap = bloque.querySelector('.t-apoyo-wrap');
-    if (wrap) wrap.style.display = areaSelect.value === 'DOBLADO' ? 'block' : 'none';
-  }
-
-  function agregarColaborador(destino) {
-    const contenedor = document.getElementById('colaboradores-' + destino);
-    const indice = contenedor.children.length;
-    const bloque = destino === 'produccion' ? crearBloqueProduccion(indice) : crearBloqueTiempos(indice);
-    contenedor.appendChild(bloque);
-  }
-
-  document.querySelectorAll('.agregar-colaborador').forEach(btn => {
-    btn.addEventListener('click', () => agregarColaborador(btn.dataset.destino));
-  });
-
-  // Arrancar cada pestaña con un colaborador ya puesto
-  agregarColaborador('produccion');
-  agregarColaborador('tiempos');
-  actualizarPestanasPorArea();
-
-  // --- Guardar (POST sin headers custom para evitar preflight CORS) ---
+  // --- Guardar ---
   document.querySelectorAll('button.guardar').forEach(btn => {
     btn.addEventListener('click', () => guardar(btn.dataset.tipo, btn));
   });
 
   function guardar(tipo, btn) {
-    const fecha = document.getElementById('fecha').value;
-    const area = document.getElementById('area').value;
+    const fecha = $('fecha').value;
+    const area = $('area').value;
+    const modulo = $('modulo').value;
     if (!fecha) { mostrarAviso(tipo, 'Falta la fecha.', true); return; }
+    if (!modulo) { mostrarAviso(tipo, 'Selecciona un módulo.', true); return; }
 
-    let payload = { tipo, fecha, area };
+    let payload = { tipo, fecha, area, modulo };
     let etiqueta = '';
 
-    if (tipo === 'produccion') {
-      const bloques = document.querySelectorAll('#colaboradores-produccion .bloque-colaborador');
-      const entradas = [];
-      for (const b of bloques) {
-        const cod = b.querySelector('.p-cod').value.trim();
-        const clave = b.querySelector('.p-clave').value.trim();
-        const cant = b.querySelector('.p-cant').value;
-        const stdManual = b.querySelector('.p-std').value;
-        if (!cod && !clave && !cant) continue; // bloque vacío, se ignora
-        if (!cod || !clave || !cant) { mostrarAviso(tipo, 'Completa código, clave y cantidad en todos los colaboradores.', true); return; }
-        entradas.push({ cod, clave, cant: Number(cant), stdManual: stdManual ? Number(stdManual) : '' });
-      }
-      if (entradas.length === 0) { mostrarAviso(tipo, 'Agrega al menos un colaborador.', true); return; }
-      payload.entradas = entradas;
-      etiqueta = entradas.length === 1
-        ? `${entradas[0].cod} · ${entradas[0].clave} · ${entradas[0].cant} pdas`
-        : `${entradas.length} colaboradores · ${area}`;
-    } else if (tipo === 'tiempos') {
-      const bloques = document.querySelectorAll('#colaboradores-tiempos .bloque-colaborador');
-      const entradas = [];
-      for (const b of bloques) {
-        const cod = b.querySelector('.t-cod').value.trim();
-        const improd = b.querySelector('.t-improd').value;
-        const apoyo = b.querySelector('.t-apoyo').value;
-        if (!cod && !improd) continue;
-        if (!cod || !improd) { mostrarAviso(tipo, 'Completa código e improductivo en todos los colaboradores.', true); return; }
-        entradas.push({ cod, improd: Number(improd), apoyo: apoyo ? Number(apoyo) : '' });
-      }
-      if (entradas.length === 0) { mostrarAviso(tipo, 'Agrega al menos un colaborador.', true); return; }
-      payload.entradas = entradas;
-      etiqueta = entradas.length === 1
-        ? `${entradas[0].cod} · ${entradas[0].improd} min improd.`
-        : `${entradas.length} colaboradores · ${area}`;
+    if (tipo === 'produccionModulo') {
+      const clave = $('p-clave').value.trim();
+      const cant = $('p-cant').value;
+      const stdManual = $('p-std').value;
+      const improd = $('p-improd').value;
+      const apoyo = $('p-apoyo').value;
+      if (!clave || !cant) { mostrarAviso(tipo, 'Completa estilo y cantidad.', true); return; }
+      payload.clave = clave;
+      payload.cant = Number(cant);
+      payload.stdManual = stdManual ? Number(stdManual) : '';
+      payload.improd = improd ? Number(improd) : '';
+      payload.apoyo = apoyo ? Number(apoyo) : '';
+      etiqueta = `${modulo} · ${clave} · ${cant} pdas`;
     } else if (tipo === 'sistema') {
-      const modulo = document.getElementById('s-modulo').value;
-      const estilo = document.getElementById('s-estilo').value.trim();
-      const cant = document.getElementById('s-cant').value;
-      if (!modulo || !estilo || !cant) { mostrarAviso(tipo, 'Completa módulo, estilo y cantidad.', true); return; }
-      payload.modulo = modulo;
+      const estilo = $('s-estilo').value.trim();
+      const cant = $('s-cant').value;
+      if (!estilo || !cant) { mostrarAviso(tipo, 'Completa estilo y cantidad.', true); return; }
       payload.estilo = estilo;
       payload.cant = Number(cant);
-      etiqueta = `${modulo} · ${estilo} · ${cant} pdas`;
+      etiqueta = `${modulo} · ${estilo} · ${cant} pdas (sistema)`;
     } else if (tipo === 'rechazo') {
-      const modulo = document.getElementById('r-modulo').value;
-      const cant = document.getElementById('r-cant').value;
-      if (!modulo || !cant) { mostrarAviso(tipo, 'Completa módulo y cantidad.', true); return; }
-      payload.modulo = modulo;
+      const cant = $('r-cant').value;
+      if (!cant) { mostrarAviso(tipo, 'Completa la cantidad rechazada.', true); return; }
       payload.cant = Number(cant);
       etiqueta = `${modulo} · ${cant} rechazadas`;
     }
@@ -624,28 +465,27 @@
   }
 
   function limpiarFormulario(tipo) {
-    if (tipo === 'produccion') {
-      document.getElementById('colaboradores-produccion').innerHTML = '';
-      agregarColaborador('produccion');
-    } else if (tipo === 'tiempos') {
-      document.getElementById('colaboradores-tiempos').innerHTML = '';
-      agregarColaborador('tiempos');
+    if (tipo === 'produccionModulo') {
+      $('p-clave').value = ''; $('p-cant').value = ''; $('p-std').value = '';
+      $('p-improd').value = ''; $('p-apoyo').value = '';
+      $('p-std-detectado').textContent = ''; $('p-std-detectado').className = 'std-detectado';
     } else if (tipo === 'sistema') {
-      document.getElementById('s-estilo').value = '';
-      document.getElementById('s-cant').value = '';
+      $('s-estilo').value = ''; $('s-cant').value = '';
     } else if (tipo === 'rechazo') {
-      document.getElementById('r-cant').value = '';
+      $('r-cant').value = '';
     }
   }
 
   function agregarALista(tipo, etiqueta) {
     contador++;
-    document.getElementById('contador-hoy').textContent = contador;
+    $('contador-hoy').textContent = contador;
     const div = document.createElement('div');
     div.className = 'item-hoy';
     div.innerHTML = `<span>${etiqueta}</span><span class="tipo">${tipo}</span>`;
-    document.getElementById('lista-items').prepend(div);
+    $('lista-items').prepend(div);
   }
+
+  actualizarPestanasPorArea();
 </script>
 
 </body>
