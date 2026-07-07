@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIVES — Dashboard Acabados</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --petroleo:#0E3B36; --petroleo-d:#092824; --esmeralda:#10B981; --alerta:#DC2626;
+    --monetario:#F59E0B; --slate:#5B7C78; --stone:#6B7280; --warm:#C9D6D3;
+    --bg:#FFFFFF; --panel:#FFFFFF; --line:#E2E8E6; --fondo:#F1F6F4;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Calibri,Arial,sans-serif;color:#1a1a1a;background:var(--fondo);line-height:1.4}
+  .header{background:var(--petroleo);color:#fff;height:72px;display:flex;align-items:center;
+    padding:0 28px;gap:20px;position:sticky;top:0;z-index:20}
+  .header svg{height:30px;width:auto}
+  .header .t{font-size:18px;font-weight:bold;letter-spacing:.5px}
+  .header .sub{margin-left:auto;font-size:13px;color:#EAF3F1;text-align:right}
+  .header button.refresh{background:var(--esmeralda);color:#fff;border:none;border-radius:6px;
+    padding:8px 14px;font-size:13px;font-weight:bold;cursor:pointer;white-space:nowrap}
+  .header button.refresh:disabled{opacity:.6;cursor:wait}
+  .wrap{max-width:1200px;margin:0 auto;padding:22px 20px 60px}
+  .hidden{display:none}
+  .loading{text-align:center;color:var(--stone);padding:60px 20px;font-size:14px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:20px 0}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .kpi .n{font-size:30px;font-weight:bold;color:var(--petroleo);line-height:1}
+  .kpi .l{font-size:12px;color:var(--stone);margin-top:6px;text-transform:uppercase;letter-spacing:.4px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:820px){.grid2{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+  .panel h3{font-size:15px;color:#1a1a1a;margin-bottom:14px;font-weight:bold}
+  .panel h3 span{font-weight:normal;color:var(--stone);font-size:12px}
+  canvas{max-height:300px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:var(--petroleo);color:#fff;font-weight:bold;text-align:left;padding:8px 10px;position:sticky;top:0}
+  td{padding:7px 10px;border-bottom:1px solid var(--line);color:#333}
+  tr:nth-child(even) td{background:#F6F9F8}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;color:#fff}
+  .scroll{max-height:420px;overflow:auto;border-radius:8px;border:1px solid var(--line)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .tab{padding:7px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--stone);
+    cursor:pointer;font-size:13px;font-weight:bold}
+  .tab.on{background:var(--petroleo);color:#fff;border-color:var(--petroleo)}
+  .eff{font-weight:bold}
+  .footer{color:var(--stone);font-size:12px;text-align:center;margin-top:26px}
+  .err{background:#fdecea;border:1px solid var(--alerta);color:#a33;padding:12px 16px;border-radius:8px;margin-top:14px}
+  .legend{font-size:11px;color:var(--stone);margin-top:6px}
+  @media print{.header .refresh{display:none}.header{position:static}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="header">
+  <svg viewBox="256 892 1070 285" fill="#FFFFFF" aria-label="LIVES"><path d="M922 969c.004-14-.032-27.5.03-41 .027-6.13.84-6.97 6.97-6.97 45.33-.03 90.66-.03 135.99 0 6.13 0 6.87.84 7 6.97.23 10.95.19 11-11 11-33.16 0-66.33-.01-99.49.01-8.05 0-8.49.44-8.49 8.49-.02 22.16-.02 44.33 0 66.5.01 7.4.58 7.98 7.99 7.98 28.16.03 56.33.01 84.49.02 9.08 0 11.87 3.55 9.07 12.42-.51 1.6-3.62 3.32-5.58 3.38-11.16.33-22.33.18-33.49.18-18.33.01-36.66-.02-54.99.02-6.76.02-7.47.72-7.48 7.5-.03 26.66-.03 53.33 0 80 .01 6.77.72 7.48 7.49 7.48 34.16.03 68.33-.04 102.5.13 2.84.01 7.88 1.2 8.11 2.51.84 4.74.34 9.81-.37 14.65-.12.83-3.74 1.6-5.76 1.63-13 .15-26 .08-39 .08-31.83 0-63.66.01-95.49-.01-8.04 0-8.48-.44-8.48-8.51-.01-58-.01-116-.01-174z M1256 930c12.57 7.63 21.51 17.83 26.06 31.56 2.17 6.55 1.2 7.44-5.53 7.9-9.46.64-16.92.44-19.76-11.86-2.6-11.25-12.65-17.13-23.33-20.73-19.92-6.7-39.57-6.63-58.71 2.96-11.27 5.65-18.9 13.88-20.09 27.08-1.29 14.42 5.74 23.95 17.34 31.26 16.96 10.69 35.87 16.72 54.55 23.31 15.18 5.35 29.37 12.36 42.37 22 36.74 27.25 28.82 82.23-9.61 102.08-13.9 7.18-28.77 10.25-44.26 10.81-16.08.58-31.95-.54-47.3-5.97-18.56-6.56-34.1-16.8-42.57-35.32-2.18-4.77-3.2-10.13-4.29-15.31-.83-3.96.88-6.5 5.36-6.35.17.01.33-.02.5-.01 4.82.15 10.64-1.28 14.14.94 3.03 1.92 3.6 7.94 4.96 12.25 4.56 14.38 14.13 24.32 28.09 29.14 24.19 8.36 48.38 8.36 71.88-2.97 8.78-4.23 14.62-11.27 16.57-20.75 4.12-19.97-.3-34.46-18.07-46.89-13.02-9.11-27.82-14.15-42.38-19.89-14.07-5.55-28.26-11-41.69-17.88-11.46-5.88-21.66-14.24-26.59-26.81-10.28-26.21-3.17-59.82 29.22-74.28 31.18-13.91 62.47-12.71 93.15 3.73z M690 964c16.5 39.55 32.83 78.74 49.18 117.94 3.7 8.86 7.43 17.7 11.74 27.95 1.59-2.89 2.64-4.43 3.33-6.12 17.29-42.59 34.53-85.2 51.8-127.8 6.51-16.05 13.28-32 19.49-48.16 2.09-5.43 5.14-7.35 10.82-7.17 10.29.33 10.23.03 6.41 9.44-17.09 42.13-34.13 84.29-51.21 126.42-12.01 29.63-24.15 59.22-36.02 88.91-1.81 4.53-4.25 6.51-9.22 6.41-16.39-.33-13.54 1.44-19.49-12.76-29.67-70.8-59.37-141.6-89.06-212.39-2.09-4.99-1.62-5.84 3.81-5.89 8.33-.08 16.66.08 24.99-.05 3.85-.06 6.16 1.49 7.62 5.08 5.13 12.66 10.44 25.24 15.84 38.18z M276 1003c0-25 .006-49.5.033-73.99.008-7.41.586-7.96 7.988-8 5.83-.03 11.66.06 17.5.02 3.75-.03 5.53 1.74 5.46 5.48-.04 2-0 4-.001 6 .003 63.66 0 127.32.006 190.98.001 9.39.118 9.5 9.498 9.5 33.66.01 67.33 0 100.99.01 8.06 0 8.47.45 8.51 8.49.005 1 .009 2-.005 3-.093 6.76-.725 7.47-7.502 7.48-45 .02-90 .02-135 0-6.76-.01-7.47-.72-7.48-7.5-.027-47-.017-94-.019-141z M546 979c0 55-.004 109.5.006 164 .001 8.72-.286 8.98-8.994 9-5.5.01-11 .07-16.498.03-3.747.03-5.553-1.73-5.468-5.48.03-1.33-.034-2.66-.034-4-.002-70.66-.005-141.32 0-212 .001-9.39.116-9.49 9.493-9.5 5 0 10 .16 14.99-.02 4.7-.17 6.57 1.83 6.53 6.53-.12 17-.04 34-.02 51z"/></svg>
+  <div class="t">DASHBOARD ACABADOS</div>
+  <div class="sub" id="sub">Eficiencias · Incentivos<br>Cargando datos en vivo del Sheet...</div>
+  <button class="refresh" id="btnRefresh">↻ Actualizar</button>
+</div>
+
+<div class="wrap">
+  <div id="loadingbox" class="loading">Cargando datos del Google Sheet...</div>
+  <div id="errbox"></div>
+
+  <div id="content" class="hidden">
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid2">
+      <div class="panel">
+        <h3>Eficiencia semanal por área <span>ponderada vs promedio simple</span></h3>
+        <canvas id="chEff"></canvas>
+        <div class="legend"><b>Ponderada</b> (Σ min prod / Σ min disponibles) es la real de la línea. <b>Simple</b> es el promedio de operarias, como el reporte anterior; infla cuando hay operarios con muchas horas y poca producción.</div>
+      </div>
+      <div class="panel">
+        <h3>Incentivo pagado por área <span>soles</span></h3>
+        <canvas id="chInc"></canvas>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>Eficiencia diaria por área <span>promedio de operarias que trabajaron ese día</span></h3>
+      <canvas id="chDay" style="max-height:320px"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>Detalle por trabajador</h3>
+      <div class="tabs" id="tabs"></div>
+      <div class="scroll">
+        <table id="tbl"><thead></thead><tbody></tbody></table>
+      </div>
+      <div class="legend">La celda de eficiencia se pinta verde ≥85%, ámbar 70–84%, rosa &lt;70%. El incentivo diario ya considera la curva y el básico de cada trabajador. La columna % Rechazo Audit. solo aplica a DOBLADO (viene de AUDITORIA DOB).</div>
+    </div>
+
+    <div class="footer">Confidencial — Uso Interno · LIVES · Datos en vivo desde Google Sheets</div>
+  </div>
+</div>
+
+<script>
+// ⚠️ Misma URL de Web App que usa formulario_acabados.html
+const URL_APPS_SCRIPT = 'https://script.google.com/macros/s/AKfycbx_RVCdk3GSyPjTRCxRDsIcSELk1bAMyDK2khgSZGPoPVrTwxYHFXRd_TspcnpbabvNFg/exec';
+
+const PETROLEO='#0E3B36',ESMERALDA='#10B981',MONETARIO='#F59E0B',SLATE='#5B7C78',ALERTA='#DC2626',WARM='#C9D6D3',STONE='#6B7280';
+const SERIES=[PETROLEO,ESMERALDA,MONETARIO,SLATE];
+const AREAS=['PLANCHA','VAPOR','DOBLADO','ENCAJADO'];
+const DAYS=['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+Chart.defaults.font.family='Calibri, Arial, sans-serif';
+Chart.defaults.color=STONE;
+let charts={};
+
+const $=id=>document.getElementById(id);
+const num=v=>typeof v==='number'?v:(v==null||v===''?0:(parseFloat(v)||0));
+
+function err(msg){$('errbox').innerHTML='<div class="err">'+msg+'</div>';}
+function clearErr(){$('errbox').innerHTML='';}
+
+$('btnRefresh').addEventListener('click', cargar);
+cargar();
+
+function cargar(){
+  clearErr();
+  $('btnRefresh').disabled = true;
+  $('btnRefresh').textContent = 'Actualizando...';
+  $('loadingbox').classList.remove('hidden');
+  fetch(URL_APPS_SCRIPT + '?accion=dashboard')
+    .then(r => r.json())
+    .then(data => {
+      $('loadingbox').classList.add('hidden');
+      render(data);
+    })
+    .catch(e => {
+      $('loadingbox').classList.add('hidden');
+      console.error('Error cargando dashboard:', e);
+      err('No se pudo conectar con el Sheet. Revisa tu internet o la URL_APPS_SCRIPT. Detalle: ' + e.message);
+    })
+    .finally(() => {
+      $('btnRefresh').disabled = false;
+      $('btnRefresh').textContent = '↻ Actualizar';
+    });
+}
+
+function render(data){
+  const ef=data.eficiencias, inc=data.incentivos, gr=data.grupos, par=data.parametros;
+  if(!ef||!inc){err('El Sheet no devolvió EFICIENCIAS o INCENTIVOS. Revisa el backend.');return;}
+
+  // ---- % RECHAZO por módulo (GRUPOS, columna BR = índice 69, solo DOBLADO)
+  const rechazoPorGrupo={};
+  if(gr){
+    for(let i=3;i<gr.length;i++){
+      const grupo=gr[i][0], area=gr[i][1];
+      if(!grupo||area!=='DOBLADO') continue;
+      rechazoPorGrupo[grupo]=num(gr[i][69]);
+    }
+  }
+
+  // ---- EFICIENCIAS: encabezados en fila índice 2 (fila 3 Excel), datos desde índice 3
+  const TOT=4+7*4; // 32
+  const COL={pdas:TOT, mprod:TOT+1, masist:TOT+2, improd:TOT+3, efsem:TOT+4, efpond:TOT+5};
+  const rows=[];
+  for(let i=3;i<ef.length;i++){
+    const cod=ef[i][0]; if(!cod) continue;
+    const area=ef[i][2]||'';
+    if(!AREAS.includes(area)) continue;
+    const daily=[]; for(let d=0;d<7;d++) daily.push(num(ef[i][4+d*4+3]));
+    const grupo=ef[i][3]||'';
+    rows.push({cod,oper:ef[i][1]||'',area,grupo,
+      pdas:num(ef[i][COL.pdas]),efsem:num(ef[i][COL.efsem]),
+      mprod:num(ef[i][COL.mprod]),masist:num(ef[i][COL.masist]),improd:num(ef[i][COL.improd]),daily,
+      rechazo: area==='DOBLADO' ? (rechazoPorGrupo[grupo]||0) : null});
+  }
+  // ---- INCENTIVOS: A cod(0)...F..L diarios(5..11), M total(12)
+  const incMap={};
+  for(let i=3;i<inc.length;i++){
+    const cod=inc[i][0]; if(!cod||typeof cod!=='string'||!cod.startsWith('O-'))continue;
+    const daily=[]; for(let d=0;d<7;d++) daily.push(num(inc[i][5+d]));
+    incMap[cod]={total:num(inc[i][12]),daily,basico:num(inc[i][4])};
+  }
+  rows.forEach(r=>{r.inc=incMap[r.cod]?incMap[r.cod].total:0; r.incDaily=incMap[r.cod]?incMap[r.cod].daily:[0,0,0,0,0,0,0];});
+
+  // ---- semana / fecha desde PARAMETROS
+  let semTxt='';
+  if(par){ let semN=null;
+    for(let i=0;i<Math.min(par.length,8);i++){ const row=par[i]||[];
+      const idx=row.findIndex(c=>typeof c==='string'&&/Semana/i.test(c));
+      if(idx>=0){ for(let j=idx;j<row.length;j++){ if(typeof row[j]==='number'){semN=row[j];break;} } }
+      if(semN)break; }
+    if(semN) semTxt='Semana '+semN; }
+  const ahora=new Date();
+  $('sub').innerHTML=(semTxt||'Reporte cargado')+'<br>Actualizado '+ahora.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+
+  // ---- métricas por área
+  const byArea={};
+  AREAS.forEach(a=>byArea[a]={mprod:0,masist:0,improd:0,inc:0,pdas:0,n:0,daily:Array(7).fill(0),dcount:Array(7).fill(0)});
+  rows.forEach(r=>{
+    const b=byArea[r.area]; b.mprod+=r.mprod;b.masist+=r.masist;b.improd+=r.improd;b.inc+=r.inc;b.pdas+=r.pdas;b.n++;
+    r.daily.forEach((v,d)=>{ if(v>0){b.daily[d]+=v;b.dcount[d]++;} });
+  });
+  const effPond=a=>{const b=byArea[a];const den=b.masist-b.improd;return den>0?b.mprod/den:0;};
+  const effDayAvg=(a,d)=>{const b=byArea[a];return b.dcount[d]>0?b.daily[d]/b.dcount[d]:0;};
+  const effSimple=a=>{const rs=rows.filter(r=>r.area===a&&r.efsem>0);return rs.length?rs.reduce((s,r)=>s+r.efsem,0)/rs.length:0;};
+
+  // ---- KPIs
+  let totInc=0,totPdas=0,totMp=0,totMa=0,totImp=0,nOper=0;
+  AREAS.forEach(a=>{const b=byArea[a];totInc+=b.inc;totPdas+=b.pdas;totMp+=b.mprod;totMa+=b.masist;totImp+=b.improd;nOper+=b.n;});
+  const effGlobal=(totMa-totImp)>0?totMp/(totMa-totImp):0;
+  const kpis=[
+    {n:(effGlobal*100).toFixed(0)+'%',l:'Eficiencia acabados (ponderada)'},
+    {n:'S/ '+totInc.toLocaleString('es-PE',{minimumFractionDigits:0,maximumFractionDigits:0}),l:'Incentivo total semana'},
+    {n:totPdas.toLocaleString('es-PE'),l:'Prendas producidas'},
+    {n:nOper,l:'Trabajadores con actividad'},
+  ];
+  $('kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="n">${k.n}</div><div class="l">${k.l}</div></div>`).join('');
+
+  // ---- Chart eficiencia por área (ponderada vs simple)
+  const effPondV=AREAS.map(a=>+(effPond(a)*100).toFixed(1));
+  const effSimpV=AREAS.map(a=>+(effSimple(a)*100).toFixed(1));
+  mkChart('chEff','bar',{labels:AREAS,datasets:[
+      {label:'Ponderada',data:effPondV,backgroundColor:PETROLEO,borderRadius:4},
+      {label:'Promedio simple',data:effSimpV,backgroundColor:WARM,borderRadius:4}]},
+    {scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{color:'#eee'}},x:{grid:{display:false}}},
+     plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+'%'}}}});
+
+  // ---- Chart incentivo por área
+  const incVals=AREAS.map(a=>+byArea[a].inc.toFixed(2));
+  mkChart('chInc','doughnut',{labels:AREAS,datasets:[{data:incVals,backgroundColor:SERIES,borderColor:'#fff',borderWidth:2}]},
+    {plugins:{legend:{position:'right'},tooltip:{callbacks:{label:c=>c.label+': S/ '+c.parsed.toLocaleString('es-PE',{minimumFractionDigits:2})}}}});
+
+  // ---- Chart eficiencia diaria
+  mkChart('chDay','line',{labels:DAYS,datasets:AREAS.map((a,i)=>({
+      label:a,data:DAYS.map((_,d)=>+(effDayAvg(a,d)*100).toFixed(1)),
+      borderColor:SERIES[i],backgroundColor:SERIES[i],tension:.3,pointRadius:3,fill:false}))},
+    {scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{color:'#eee'}},x:{grid:{display:false}}},
+     plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+'%'}}}});
+
+  // ---- Tabla por trabajador con tabs
+  window._rows=rows;
+  const tabs=['TODAS',...AREAS];
+  $('tabs').innerHTML=tabs.map((t,i)=>`<div class="tab ${i===0?'on':''}" data-a="${t}">${t}</div>`).join('');
+  document.querySelectorAll('.tab').forEach(tb=>tb.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    tb.classList.add('on'); fillTable(tb.dataset.a);
+  }));
+  fillTable('TODAS');
+
+  $('content').classList.remove('hidden');
+}
+
+function effColor(e){ if(e>=.85)return {bg:'#E3F2EE',fg:'#0E3B36'}; if(e>=.70)return {bg:'#FEF3DD',fg:'#8a6d2e'}; return {bg:'#FBE6E6',fg:'#a33'}; }
+
+function fillTable(area){
+  const rows=window._rows.filter(r=>area==='TODAS'||r.area===area)
+    .sort((a,b)=>b.efsem-a.efsem);
+  const head=['Trabajador','Área','Grupo',...DAYS,'% Efic Sem','Prendas','Incent. S/','% Rechazo Audit.'];
+  $('tbl').querySelector('thead').innerHTML='<tr>'+head.map((h,i)=>
+    `<th class="${i>=3?'num':''}">${h}</th>`).join('')+'</tr>';
+  $('tbl').querySelector('tbody').innerHTML=rows.map(r=>{
+    const days=r.daily.map(d=>{
+      if(d<=0)return '<td class="num" style="color:#bbb">—</td>';
+      const c=effColor(d);
+      return `<td class="num" style="background:${c.bg};color:${c.fg};font-weight:bold">${(d*100).toFixed(0)}%</td>`;
+    }).join('');
+    const cs=effColor(r.efsem);
+    const rechazoCell = r.rechazo===null
+      ? '<td class="num" style="color:#bbb">—</td>'
+      : `<td class="num" style="color:${r.rechazo>0.5?'#a33':'#333'};font-weight:${r.rechazo>0.5?'bold':'normal'}">${(r.rechazo*100).toFixed(0)}%</td>`;
+    return `<tr>
+      <td>${r.oper||r.cod}</td>
+      <td><span class="tag" style="background:${areaColor(r.area)}">${r.area}</span></td>
+      <td style="color:${STONE}">${r.grupo}</td>
+      ${days}
+      <td class="num eff" style="background:${cs.bg};color:${cs.fg}">${(r.efsem*100).toFixed(0)}%</td>
+      <td class="num">${r.pdas.toLocaleString('es-PE')}</td>
+      <td class="num" style="font-weight:bold;color:${PETROLEO}">${r.inc.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      ${rechazoCell}
+    </tr>`;
+  }).join('');
+}
+function areaColor(a){return {PLANCHA:PETROLEO,VAPOR:SLATE,DOBLADO:MONETARIO,ENCAJADO:ESMERALDA}[a]||STONE;}
+
+function mkChart(id,type,data,opts){
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart($(id),{type,data,options:Object.assign({responsive:true,maintainAspectRatio:false},opts)});
+}
+</script>
+</body>
+</html>
