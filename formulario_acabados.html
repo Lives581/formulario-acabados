@@ -259,8 +259,18 @@
   <!-- PRODUCCIÓN POR MÓDULO (unifica cantidad + improductivos, total del módulo) -->
   <section class="panel activo" id="panel-produccion">
     <div class="campo-grupo">
-      <label>Estilo (clave / categoría / cliente)</label>
-      <input type="text" id="p-clave" placeholder="Ej: 25175, R, A, EFI...">
+      <label id="label-clave">Estilo (número de prenda)</label>
+      <input type="text" id="p-clave" placeholder="Ej: 25175" inputmode="numeric">
+    </div>
+    <div class="campo-grupo" id="subcategoria-wrap" style="display:none">
+      <label>Subcategoría (solo PLANCHA)</label>
+      <select id="p-subcategoria">
+        <option value="">-- Selecciona --</option>
+        <option value="R">R — Retoques de escote</option>
+        <option value="A">A — Apariencia escote, faldón</option>
+        <option value="B">B — Apariencia escote, faldón, sisas, mangas, ancho hombros</option>
+        <option value="C">C — Apariencia y medida ancho escote, bajo sisa, faldón</option>
+      </select>
     </div>
     <div class="std-detectado" id="p-std-detectado"></div>
     <div class="fila-doble">
@@ -420,8 +430,11 @@
 
   function actualizarPestanasPorArea() {
     const esDoblado = $('area').value === 'DOBLADO';
+    const esPlancha = $('area').value === 'PLANCHA';
     document.querySelector('[data-tab="sistema"]').classList.toggle('oculto', !esDoblado);
     document.querySelector('[data-tab="rechazo"]').classList.toggle('oculto', !esDoblado);
+    $('subcategoria-wrap').style.display = esPlancha ? 'block' : 'none';
+    $('label-clave').textContent = esPlancha ? 'Estilo (número de prenda)' : 'Estilo (clave / categoría / cliente)';
     actualizarStd();
   }
 
@@ -446,13 +459,12 @@
     for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][16]) === String(nivel)) return stdTabla[i][17];
     return null;
   }
-  function detectarStd(area, clave) {
-    if (!clave) return null;
+  function detectarStd(area, clave, subcategoria) {
     if (area === 'PLANCHA') {
-      const c = clave.trim().toUpperCase();
-      if (!['R','A','B','C'].includes(c)) return null; // PLANCHA solo usa estas 4 categorías
-      return buscarPorEstiloColF(c);
+      if (!subcategoria) return null;
+      return buscarPorEstiloColF(subcategoria.toUpperCase());
     }
+    if (!clave) return null;
     if (area === 'VAPOR') return buscarPorEstiloColD(clave);
     if (area === 'DOBLADO') { const v = buscarPorEstiloColF(clave); return v != null ? v : buscarClienteDob(clave); }
     if (area === 'ENCAJADO') { const nivel = buscarNivelPorEstilo(clave); return nivel == null ? null : buscarStdPorNivel(nivel); }
@@ -460,14 +472,19 @@
   }
   function actualizarStd() {
     const div = $('p-std-detectado');
+    const area = $('area').value;
     const clave = $('p-clave').value.trim();
-    if (!clave) { div.textContent = ''; div.className = 'std-detectado'; return; }
-    const std = detectarStd($('area').value, clave);
+    const subcategoria = $('p-subcategoria').value;
+    if (area === 'PLANCHA') {
+      if (!subcategoria) { div.textContent = ''; div.className = 'std-detectado'; return; }
+    } else if (!clave) { div.textContent = ''; div.className = 'std-detectado'; return; }
+    const std = detectarStd(area, clave, subcategoria);
     if (std != null && std !== '') { div.textContent = `STD detectado: ${std}`; div.className = 'std-detectado ok'; }
-    else if ($('area').value === 'PLANCHA') { div.textContent = 'PLANCHA solo usa R, A, B o C — escribe una de esas 4 letras.'; div.className = 'std-detectado error'; }
+    else if (area === 'PLANCHA') { div.textContent = 'No se encontró STD para esa subcategoría.'; div.className = 'std-detectado error'; }
     else { div.textContent = 'No se encontró STD para esa clave — usa STD manual o revisa la clave.'; div.className = 'std-detectado error'; }
   }
   $('p-clave').addEventListener('input', actualizarStd);
+  $('p-subcategoria').addEventListener('change', actualizarStd);
 
   // --- Guardar ---
   document.querySelectorAll('button.guardar').forEach(btn => {
@@ -486,20 +503,25 @@
 
     if (tipo === 'produccionModulo') {
       const clave = $('p-clave').value.trim();
+      const subcategoria = $('p-subcategoria').value;
       const cant = $('p-cant').value;
       const stdManual = $('p-std').value;
       const improd = $('p-improd').value;
       const apoyo = $('p-apoyo').value;
       const integrantes = obtenerCodigosColaboradores();
       if (!clave || !cant) { mostrarAviso(tipo, 'Completa estilo y cantidad.', true); return; }
+      if (area === 'PLANCHA' && !subcategoria) { mostrarAviso(tipo, 'Selecciona la subcategoría (R/A/B/C).', true); return; }
       if (integrantes.length === 0) { mostrarAviso(tipo, 'Escribe el código de al menos un colaborador.', true); return; }
       payload.clave = clave;
+      payload.subcategoria = area === 'PLANCHA' ? subcategoria : '';
       payload.cant = Number(cant);
       payload.stdManual = stdManual ? Number(stdManual) : '';
       payload.improd = improd ? Number(improd) : '';
       payload.apoyo = apoyo ? Number(apoyo) : '';
       payload.integrantes = integrantes;
-      etiqueta = `${modulo} (${integrantes.join(', ')}) · ${clave} · ${cant} pdas`;
+      etiqueta = area === 'PLANCHA'
+        ? `${modulo} (${integrantes.join(', ')}) · estilo ${clave} · ${subcategoria} · ${cant} pdas`
+        : `${modulo} (${integrantes.join(', ')}) · ${clave} · ${cant} pdas`;
     } else if (tipo === 'sistema') {
       const estilo = $('s-estilo').value.trim();
       const cant = $('s-cant').value;
@@ -546,7 +568,7 @@
   function limpiarFormulario(tipo) {
     if (tipo === 'produccionModulo') {
       $('p-clave').value = ''; $('p-cant').value = ''; $('p-std').value = '';
-      $('p-improd').value = ''; $('p-apoyo').value = '';
+      $('p-improd').value = ''; $('p-apoyo').value = ''; $('p-subcategoria').value = '';
       $('p-std-detectado').textContent = ''; $('p-std-detectado').className = 'std-detectado';
       reiniciarColaboradoresMini();
     } else if (tipo === 'sistema') {
