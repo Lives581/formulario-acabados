@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIVES — Digitación Acabados</title>
+<style>
+  :root {
+    --petroleo: #0E3B36;
+    --esmeralda: #10B981;
+    --alerta: #DC2626;
+    --monetario: #F59E0B;
+    --fondo: #F1F6F4;
+    --gris: #7C7B77;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: Calibri, Arial, sans-serif;
+    background: var(--fondo);
+    color: #1a1a1a;
+  }
+  header {
+    background: var(--petroleo);
+    color: #fff;
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header .brand { font-weight: bold; letter-spacing: 2px; font-size: 18px; }
+  header .titulo { font-size: 14px; opacity: 0.9; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px; }
+
+  .barra-fecha {
+    background: #fff;
+    border-radius: 10px;
+    padding: 14px;
+    margin-bottom: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .barra-fecha label { font-size: 12px; color: var(--gris); display: block; margin-bottom: 4px; }
+  .barra-fecha input, .barra-fecha select {
+    font-size: 16px;
+    padding: 8px;
+    border: 1px solid #d8dede;
+    border-radius: 6px;
+    width: 100%;
+  }
+  .barra-fecha .campo { flex: 1; min-width: 130px; }
+
+  nav.tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+  }
+  nav.tabs button {
+    flex: 1;
+    min-width: 90px;
+    padding: 10px 6px;
+    border: none;
+    border-radius: 8px;
+    background: #fff;
+    color: var(--petroleo);
+    font-weight: bold;
+    font-size: 13px;
+    cursor: pointer;
+    border: 1px solid #d8dede;
+  }
+  nav.tabs button.activo {
+    background: var(--petroleo);
+    color: #fff;
+    border-color: var(--petroleo);
+  }
+  nav.tabs button.oculto { display: none; }
+
+  .panel {
+    background: #fff;
+    border-radius: 10px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    display: none;
+  }
+  .panel.activo { display: block; }
+
+  .campo-grupo { margin-bottom: 12px; }
+  .campo-grupo label { font-size: 13px; color: var(--gris); display: block; margin-bottom: 4px; }
+  .campo-grupo input, .campo-grupo select {
+    width: 100%;
+    font-size: 16px;
+    padding: 10px;
+    border: 1px solid #d8dede;
+    border-radius: 6px;
+  }
+  .campo-grupo input:focus, .campo-grupo select:focus {
+    outline: 2px solid var(--esmeralda);
+    border-color: var(--esmeralda);
+  }
+  .fila-doble { display: flex; gap: 10px; }
+  .fila-doble > div { flex: 1; }
+
+  .nombre-detectado {
+    font-size: 13px;
+    margin-top: -6px;
+    margin-bottom: 12px;
+    min-height: 18px;
+  }
+  .nombre-detectado.ok { color: var(--esmeralda); }
+  .nombre-detectado.error { color: var(--alerta); }
+
+  button.guardar {
+    width: 100%;
+    background: var(--esmeralda);
+    color: #fff;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  button.guardar:disabled { background: #9fd9c4; cursor: not-allowed; }
+  button.guardar:active { transform: scale(0.99); }
+
+  .aviso {
+    font-size: 13px;
+    text-align: center;
+    padding: 10px;
+    border-radius: 6px;
+    margin-top: 10px;
+    display: none;
+  }
+  .aviso.ok { display: block; background: #e6f7f1; color: var(--petroleo); }
+  .aviso.error { display: block; background: #fdecea; color: var(--alerta); }
+
+  .lista-hoy {
+    margin-top: 18px;
+  }
+  .lista-hoy h3 { font-size: 13px; color: var(--gris); margin-bottom: 8px; }
+  .item-hoy {
+    background: #fff;
+    border-left: 3px solid var(--esmeralda);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .item-hoy .tipo { color: var(--gris); font-size: 11px; }
+
+  footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--gris);
+    padding: 20px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">LIVES</div>
+  <div class="titulo">Digitación diaria — Acabados</div>
+</header>
+
+<main>
+
+  <div class="barra-fecha">
+    <div class="campo">
+      <label for="fecha">Fecha</label>
+      <input type="date" id="fecha">
+    </div>
+    <div class="campo">
+      <label for="area">Área</label>
+      <select id="area">
+        <option value="PLANCHA">PLANCHA</option>
+        <option value="VAPOR">VAPOR</option>
+        <option value="DOBLADO">DOBLADO</option>
+        <option value="ENCAJADO">ENCAJADO</option>
+      </select>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    <button data-tab="produccion" class="activo">Producción</button>
+    <button data-tab="tiempos">Tiempos</button>
+    <button data-tab="sistema" class="oculto">Sistema</button>
+    <button data-tab="rechazo" class="oculto">Rechazo</button>
+  </nav>
+
+  <!-- PRODUCCIÓN -->
+  <section class="panel activo" id="panel-produccion">
+    <div class="campo-grupo">
+      <label for="p-cod">Código de trabajador</label>
+      <input type="text" id="p-cod" placeholder="Ej: O-9145" autocomplete="off">
+    </div>
+    <div class="nombre-detectado" id="p-nombre"></div>
+    <div class="campo-grupo">
+      <label for="p-clave">Clave (estilo / categoría / cliente)</label>
+      <input type="text" id="p-clave" placeholder="Ej: 25175, R, A, EFI...">
+    </div>
+    <div class="fila-doble">
+      <div class="campo-grupo">
+        <label for="p-cant">Cantidad</label>
+        <input type="number" id="p-cant" min="0" inputmode="numeric">
+      </div>
+      <div class="campo-grupo">
+        <label for="p-std">STD manual (opcional)</label>
+        <input type="number" id="p-std" min="0" step="0.01" inputmode="decimal">
+      </div>
+    </div>
+    <button class="guardar" data-tipo="produccion">Agregar producción</button>
+    <div class="aviso" id="aviso-produccion"></div>
+  </section>
+
+  <!-- TIEMPOS -->
+  <section class="panel" id="panel-tiempos">
+    <div class="campo-grupo">
+      <label for="t-cod">Código de trabajador</label>
+      <input type="text" id="t-cod" placeholder="Ej: O-9145" autocomplete="off">
+    </div>
+    <div class="nombre-detectado" id="t-nombre"></div>
+    <div class="fila-doble">
+      <div class="campo-grupo">
+        <label for="t-improd">Improductivo (min)</label>
+        <input type="number" id="t-improd" min="0" inputmode="numeric">
+      </div>
+      <div class="campo-grupo" id="t-apoyo-wrap">
+        <label for="t-apoyo">Apoyo módulo (min)</label>
+        <input type="number" id="t-apoyo" min="0" inputmode="numeric">
+      </div>
+    </div>
+    <button class="guardar" data-tipo="tiempos">Agregar tiempo</button>
+    <div class="aviso" id="aviso-tiempos"></div>
+  </section>
+
+  <!-- SISTEMA DOB -->
+  <section class="panel" id="panel-sistema">
+    <div class="campo-grupo">
+      <label for="s-modulo">Módulo</label>
+      <select id="s-modulo"></select>
+    </div>
+    <div class="campo-grupo">
+      <label for="s-estilo">Estilo</label>
+      <input type="text" id="s-estilo" placeholder="Ej: 25175" inputmode="numeric">
+    </div>
+    <div class="campo-grupo">
+      <label for="s-cant">Cantidad</label>
+      <input type="number" id="s-cant" min="0" inputmode="numeric">
+    </div>
+    <button class="guardar" data-tipo="sistema">Agregar producción sistema</button>
+    <div class="aviso" id="aviso-sistema"></div>
+  </section>
+
+  <!-- RECHAZO -->
+  <section class="panel" id="panel-rechazo">
+    <div class="campo-grupo">
+      <label for="r-modulo">Módulo</label>
+      <select id="r-modulo"></select>
+    </div>
+    <div class="campo-grupo">
+      <label for="r-cant">Prendas rechazadas</label>
+      <input type="number" id="r-cant" min="0" inputmode="numeric">
+    </div>
+    <button class="guardar" data-tipo="rechazo">Agregar rechazo</button>
+    <div class="aviso" id="aviso-rechazo"></div>
+  </section>
+
+  <div class="lista-hoy">
+    <h3>Agregado en esta sesión (<span id="contador-hoy">0</span>)</h3>
+    <div id="lista-items"></div>
+  </div>
+
+</main>
+
+<footer>Confidencial — Uso Interno · LIVES</footer>
+
+<script>
+  // ⚠️ Pegar aquí la URL del Web App de Apps Script tras desplegarlo (ver glue_formulario.gs)
+  const URL_APPS_SCRIPT = 'https://script.google.com/macros/s/AKfycbx_RVCdk3GSyPjTRCxRDsIcSELk1bAMyDK2khgSZGPoPVrTwxYHFXRd_TspcnpbabvNFg/exec';
+
+  let trabajadores = {};   // { 'O-9145': {nombre, area, modulo} }
+  let modulosDob = [];     // ['DOB-M1', ...]
+  let contador = 0;
+
+  const hoy = new Date();
+  document.getElementById('fecha').value = hoy.toISOString().slice(0,10);
+
+  // --- Cargar catálogo de trabajadores/módulos al abrir ---
+  fetch(URL_APPS_SCRIPT + '?accion=catalogo')
+    .then(r => r.json())
+    .then(data => {
+      trabajadores = data.trabajadores || {};
+      modulosDob = data.modulos || [];
+      const selects = [document.getElementById('s-modulo'), document.getElementById('r-modulo')];
+      selects.forEach(sel => {
+        sel.innerHTML = modulosDob.map(m => `<option value="${m}">${m}</option>`).join('');
+      });
+      console.log('Catálogo cargado OK:', Object.keys(trabajadores).length, 'trabajadores');
+    })
+    .catch(err => {
+      console.error('ERROR REAL cargando catálogo:', err);
+      console.error('Mensaje:', err.message);
+    });
+
+  // --- Tabs ---
+  const tabs = document.querySelectorAll('nav.tabs button');
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.forEach(b => b.classList.remove('activo'));
+      btn.classList.add('activo');
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('activo'));
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('activo');
+    });
+  });
+
+  // --- Mostrar/ocultar pestañas SISTEMA y RECHAZO según área ---
+  const areaSelect = document.getElementById('area');
+  function actualizarPestanasPorArea() {
+    const esDoblado = areaSelect.value === 'DOBLADO';
+    document.querySelector('[data-tab="sistema"]').classList.toggle('oculto', !esDoblado);
+    document.querySelector('[data-tab="rechazo"]').classList.toggle('oculto', !esDoblado);
+    document.getElementById('t-apoyo-wrap').style.display = esDoblado ? 'block' : 'none';
+  }
+  areaSelect.addEventListener('change', actualizarPestanasPorArea);
+  actualizarPestanasPorArea();
+
+  // --- Autocompletar nombre al escribir código ---
+  function enlazarDeteccionNombre(inputId, nombreId) {
+    const input = document.getElementById(inputId);
+    const nombreDiv = document.getElementById(nombreId);
+    input.addEventListener('input', () => {
+      const cod = input.value.trim().toUpperCase();
+      input.value = cod;
+      if (!cod) { nombreDiv.textContent = ''; nombreDiv.className = 'nombre-detectado'; return; }
+      const t = trabajadores[cod];
+      if (t) {
+        nombreDiv.textContent = `${t.nombre} — ${t.area}`;
+        nombreDiv.className = 'nombre-detectado ok';
+      } else {
+        nombreDiv.textContent = '¿Código no encontrado? Revisa en TRABAJADORES.';
+        nombreDiv.className = 'nombre-detectado error';
+      }
+    });
+  }
+  enlazarDeteccionNombre('p-cod', 'p-nombre');
+  enlazarDeteccionNombre('t-cod', 't-nombre');
+
+  // --- Guardar (POST sin headers custom para evitar preflight CORS) ---
+  document.querySelectorAll('button.guardar').forEach(btn => {
+    btn.addEventListener('click', () => guardar(btn.dataset.tipo, btn));
+  });
+
+  function guardar(tipo, btn) {
+    const fecha = document.getElementById('fecha').value;
+    const area = document.getElementById('area').value;
+    if (!fecha) { mostrarAviso(tipo, 'Falta la fecha.', true); return; }
+
+    let payload = { tipo, fecha, area };
+    let etiqueta = '';
+
+    if (tipo === 'produccion') {
+      const cod = document.getElementById('p-cod').value.trim();
+      const clave = document.getElementById('p-clave').value.trim();
+      const cant = document.getElementById('p-cant').value;
+      if (!cod || !clave || !cant) { mostrarAviso(tipo, 'Completa código, clave y cantidad.', true); return; }
+      payload.cod = cod;
+      payload.clave = clave;
+      payload.cant = Number(cant);
+      payload.stdManual = document.getElementById('p-std').value ? Number(document.getElementById('p-std').value) : '';
+      etiqueta = `${cod} · ${clave} · ${cant} pdas`;
+    } else if (tipo === 'tiempos') {
+      const cod = document.getElementById('t-cod').value.trim();
+      const improd = document.getElementById('t-improd').value;
+      if (!cod || !improd) { mostrarAviso(tipo, 'Completa código e improductivo.', true); return; }
+      payload.cod = cod;
+      payload.improd = Number(improd);
+      payload.apoyo = document.getElementById('t-apoyo').value ? Number(document.getElementById('t-apoyo').value) : '';
+      etiqueta = `${cod} · ${improd} min improd.`;
+    } else if (tipo === 'sistema') {
+      const modulo = document.getElementById('s-modulo').value;
+      const estilo = document.getElementById('s-estilo').value.trim();
+      const cant = document.getElementById('s-cant').value;
+      if (!modulo || !estilo || !cant) { mostrarAviso(tipo, 'Completa módulo, estilo y cantidad.', true); return; }
+      payload.modulo = modulo;
+      payload.estilo = estilo;
+      payload.cant = Number(cant);
+      etiqueta = `${modulo} · ${estilo} · ${cant} pdas`;
+    } else if (tipo === 'rechazo') {
+      const modulo = document.getElementById('r-modulo').value;
+      const cant = document.getElementById('r-cant').value;
+      if (!modulo || !cant) { mostrarAviso(tipo, 'Completa módulo y cantidad.', true); return; }
+      payload.modulo = modulo;
+      payload.cant = Number(cant);
+      etiqueta = `${modulo} · ${cant} rechazadas`;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify(payload) })
+      .then(r => r.json())
+      .then(res => {
+        if (res.ok) {
+          mostrarAviso(tipo, 'Guardado.', false);
+          agregarALista(tipo, etiqueta);
+          limpiarFormulario(tipo);
+        } else {
+          mostrarAviso(tipo, res.error || 'Error al guardar.', true);
+        }
+      })
+      .catch(() => mostrarAviso(tipo, 'No se pudo conectar. Revisa tu internet.', true))
+      .finally(() => {
+        btn.disabled = false;
+        btn.textContent = btn.textContent.replace('Guardando...', '');
+        restaurarTextoBoton(tipo, btn);
+      });
+  }
+
+  function restaurarTextoBoton(tipo, btn) {
+    const textos = {
+      produccion: 'Agregar producción',
+      tiempos: 'Agregar tiempo',
+      sistema: 'Agregar producción sistema',
+      rechazo: 'Agregar rechazo'
+    };
+    btn.textContent = textos[tipo];
+  }
+
+  function mostrarAviso(tipo, mensaje, esError) {
+    const div = document.getElementById('aviso-' + tipo);
+    div.textContent = mensaje;
+    div.className = 'aviso ' + (esError ? 'error' : 'ok');
+    setTimeout(() => { div.className = 'aviso'; }, 2500);
+  }
+
+  function limpiarFormulario(tipo) {
+    if (tipo === 'produccion') {
+      document.getElementById('p-clave').value = '';
+      document.getElementById('p-cant').value = '';
+      document.getElementById('p-std').value = '';
+    } else if (tipo === 'tiempos') {
+      document.getElementById('t-improd').value = '';
+      document.getElementById('t-apoyo').value = '';
+    } else if (tipo === 'sistema') {
+      document.getElementById('s-estilo').value = '';
+      document.getElementById('s-cant').value = '';
+    } else if (tipo === 'rechazo') {
+      document.getElementById('r-cant').value = '';
+    }
+  }
+
+  function agregarALista(tipo, etiqueta) {
+    contador++;
+    document.getElementById('contador-hoy').textContent = contador;
+    const div = document.createElement('div');
+    div.className = 'item-hoy';
+    div.innerHTML = `<span>${etiqueta}</span><span class="tipo">${tipo}</span>`;
+    document.getElementById('lista-items').prepend(div);
+  }
+</script>
+
+</body>
+</html>
