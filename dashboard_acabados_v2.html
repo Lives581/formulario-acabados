@@ -92,7 +92,7 @@
       <div class="scroll">
         <table id="tbl"><thead></thead><tbody></tbody></table>
       </div>
-      <div class="legend">La celda de eficiencia se pinta verde ≥85%, ámbar 70–84%, rosa &lt;70%. El incentivo diario ya considera la curva y el básico de cada trabajador. La columna % Rechazo Audit. solo aplica a DOBLADO (viene de AUDITORIA DOB). La pestaña <b>POR MÓDULO</b> agrupa por pareja/módulo (PL-1, DOB-M1, etc.); el % Efic Sem ahí es el promedio de los integrantes — el incentivo en soles sí es el monto exacto ya repartido entre ellos.</div>
+      <div class="legend">La celda de eficiencia se pinta verde ≥85%, ámbar 70–84%, rosa &lt;70%. El incentivo diario ya considera la curva y el básico de cada trabajador. La columna % Rechazo Audit. solo aplica a DOBLADO (viene de AUDITORIA DOB). Desde que la digitación pasó a ser por módulo (no por persona), las columnas de % Efic diario y Prendas de esta tabla pueden salir en 0 para trabajadores de módulos con 2+ integrantes — el incentivo en soles sigue siendo exacto. Para ver la producción real, usa la pestaña <b>POR MÓDULO</b>, que calcula la eficiencia ponderada real del módulo (no un promedio) directo desde GRUPOS.</div>
     </div>
 
     <div class="footer">Confidencial — Uso Interno · LIVES · Datos en vivo desde Google Sheets</div>
@@ -146,13 +146,22 @@ function render(data){
   const ef=data.eficiencias, inc=data.incentivos, gr=data.grupos, par=data.parametros;
   if(!ef||!inc){err('El Sheet no devolvió EFICIENCIAS o INCENTIVOS. Revisa el backend.');return;}
 
-  // ---- % RECHAZO por módulo (GRUPOS, columna BR = índice 69, solo DOBLADO)
+  // ---- % RECHAZO, Pdas Prod SEM y eficiencia ponderada real por módulo (desde GRUPOS)
   const rechazoPorGrupo={};
+  const pdasPorGrupo={};
+  const efPondPorGrupo={};
+  const MP_COLS=[3,12,21,30,39,48,57], MA_COLS=[4,13,22,31,40,49,58], IM_COLS=[5,14,23,32,41,50,59];
   if(gr){
     for(let i=3;i<gr.length;i++){
       const grupo=gr[i][0], area=gr[i][1];
-      if(!grupo||area!=='DOBLADO') continue;
-      rechazoPorGrupo[grupo]=num(gr[i][69]);
+      if(!grupo) continue;
+      pdasPorGrupo[grupo]=num(gr[i][67]); // BP, columna 68 (índice 67)
+      if(area==='DOBLADO') rechazoPorGrupo[grupo]=num(gr[i][69]); // BR, columna 70 (índice 69)
+      let mp=0,ma=0,im=0;
+      MP_COLS.forEach(c=>mp+=num(gr[i][c]));
+      MA_COLS.forEach(c=>ma+=num(gr[i][c]));
+      IM_COLS.forEach(c=>im+=num(gr[i][c]));
+      efPondPorGrupo[grupo]=(ma-im)>0?mp/(ma-im):0;
     }
   }
 
@@ -237,6 +246,8 @@ function render(data){
 
   // ---- Tabla por trabajador con tabs
   window._rows=rows;
+  window._pdasPorGrupo=pdasPorGrupo;
+  window._efPondPorGrupo=efPondPorGrupo;
   const tabs=['TODAS',...AREAS,'POR MÓDULO'];
   $('tabs').innerHTML=tabs.map((t,i)=>`<div class="tab ${i===0?'on':''}" data-a="${t}">${t}</div>`).join('');
   document.querySelectorAll('.tab').forEach(tb=>tb.addEventListener('click',()=>{
@@ -286,19 +297,20 @@ function fillTablaPorModulo(){
   const grupos={};
   rows.forEach(r=>{
     if(!r.grupo) return;
-    if(!grupos[r.grupo]) grupos[r.grupo]={grupo:r.grupo,area:r.area,integrantes:[],pdas:0,inc:0,efSum:0,efN:0,rechazo:r.rechazo};
+    if(!grupos[r.grupo]) grupos[r.grupo]={grupo:r.grupo,area:r.area,integrantes:[],inc:0,
+      pdas: (window._pdasPorGrupo && window._pdasPorGrupo[r.grupo]) || 0,
+      efPond: (window._efPondPorGrupo && window._efPondPorGrupo[r.grupo]) || 0,
+      rechazo:r.rechazo};
     const g=grupos[r.grupo];
     g.integrantes.push(r.oper||r.cod);
-    g.pdas+=r.pdas; g.inc+=r.inc;
-    if(r.efsem>0){g.efSum+=r.efsem; g.efN++;}
+    g.inc+=r.inc;
   });
   const lista=Object.values(grupos).sort((a,b)=>a.area.localeCompare(b.area)||a.grupo.localeCompare(b.grupo));
 
-  const head=['Módulo/Pareja','Área','Integrantes','% Efic Sem (prom.)','Prendas Prod','Incent. S/ (total grupo)','% Rechazo Audit.'];
+  const head=['Módulo/Pareja','Área','Integrantes','% Efic Sem (ponderada)','Prendas Prod','Incent. S/ (total grupo)','% Rechazo Audit.'];
   $('tbl').querySelector('thead').innerHTML='<tr>'+head.map((h,i)=>`<th class="${i>=3?'num':''}">${h}</th>`).join('')+'</tr>';
   $('tbl').querySelector('tbody').innerHTML=lista.map(g=>{
-    const efProm=g.efN?g.efSum/g.efN:0;
-    const cs=effColor(efProm);
+    const cs=effColor(g.efPond);
     const rechazoCell = (g.area==='DOBLADO' && g.rechazo!=null)
       ? `<td class="num" style="color:${g.rechazo>0.5?'#a33':'#333'};font-weight:${g.rechazo>0.5?'bold':'normal'}">${(g.rechazo*100).toFixed(0)}%</td>`
       : '<td class="num" style="color:#bbb">—</td>';
@@ -306,7 +318,7 @@ function fillTablaPorModulo(){
       <td style="font-weight:bold">${g.grupo}</td>
       <td><span class="tag" style="background:${areaColor(g.area)}">${g.area}</span></td>
       <td>${g.integrantes.join(' · ')}</td>
-      <td class="num eff" style="background:${cs.bg};color:${cs.fg}">${(efProm*100).toFixed(0)}%</td>
+      <td class="num eff" style="background:${cs.bg};color:${cs.fg}">${(g.efPond*100).toFixed(0)}%</td>
       <td class="num">${g.pdas.toLocaleString('es-PE')}</td>
       <td class="num" style="font-weight:bold;color:${PETROLEO}">${g.inc.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
       ${rechazoCell}
