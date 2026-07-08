@@ -88,12 +88,13 @@
     </div>
 
     <div class="panel">
-      <h3>Detalle por trabajador</h3>
+      <h3>Detalle por trabajador <button class="refresh" id="btnExportar" style="float:right;background:var(--monetario);font-size:12px;padding:6px 12px">📥 Exportar vista a Excel</button></h3>
       <div class="tabs" id="tabs"></div>
       <div class="scroll">
         <table id="tbl"><thead></thead><tbody></tbody></table>
       </div>
       <div class="legend">La celda de eficiencia se pinta verde ≥85%, ámbar 70–84%, rosa &lt;70%. El incentivo diario ya considera la curva y el básico de cada trabajador. La columna % Rechazo Audit. solo aplica a DOBLADO (viene de AUDITORIA DOB). Desde que la digitación pasó a ser por módulo (no por persona), las columnas de % Efic diario y Prendas de esta tabla pueden salir en 0 para trabajadores de módulos con 2+ integrantes — el incentivo en soles sigue siendo exacto. Para ver la producción real, usa la pestaña <b>POR MÓDULO</b>, que calcula la eficiencia ponderada real del módulo (no un promedio) directo desde GRUPOS.</div>
+      <div class="legend" id="legend-exportar" style="margin-top:4px">"Exportar vista a Excel" descarga TODAS/PLANCHA/VAPOR/DOBLADO/ENCAJADO según la pestaña que tengas abierta arriba (no exporta la vista "POR MÓDULO", esa se ve solo en pantalla por ahora). El Excel trae 2 pestañas: <b>RESUMEN</b> (los números finales) y <b>REGISTROS</b> (lo que se digitó esa semana, ordenado y legible) — sirve de respaldo antes de limpiar datos del Sheet.</div>
     </div>
 
     <div class="footer">Confidencial — Uso Interno · LIVES · Datos en vivo desde Google Sheets</div>
@@ -119,6 +120,29 @@ function err(msg){$('errbox').innerHTML='<div class="err">'+msg+'</div>';}
 function clearErr(){$('errbox').innerHTML='';}
 
 $('btnRefresh').addEventListener('click', cargar);
+
+$('btnExportar').addEventListener('click', () => {
+  const vista = window._tabActiva === 'POR MÓDULO' ? 'TODAS' : (window._tabActiva || 'TODAS');
+  const btn = $('btnExportar');
+  btn.disabled = true;
+  btn.textContent = 'Generando...';
+  fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'exportarResumen', vista }) })
+    .then(r => r.json())
+    .then(res => {
+      if (!res.ok) { alert('No se pudo generar el Excel: ' + (res.error || '')); return; }
+      const bytes = atob(res.base64);
+      const arr = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+      const blob = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = res.archivo;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    })
+    .catch(() => alert('No se pudo generar el Excel. Puede tardar un poco la primera vez — intenta de nuevo.'))
+    .finally(() => { btn.disabled = false; btn.textContent = '📥 Exportar vista a Excel'; });
+});
 
 $('btnCerrarSemana').addEventListener('click', () => {
   const codigo = prompt('Código de administrador:');
@@ -284,8 +308,10 @@ function render(data){
   document.querySelectorAll('.tab').forEach(tb=>tb.addEventListener('click',()=>{
     document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
     tb.classList.add('on');
+    window._tabActiva = tb.dataset.a;
     if (tb.dataset.a === 'POR MÓDULO') fillTablaPorModulo(); else fillTable(tb.dataset.a);
   }));
+  window._tabActiva='TODAS';
   fillTable('TODAS');
 
   $('content').classList.remove('hidden');
