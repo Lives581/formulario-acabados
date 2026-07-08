@@ -101,6 +101,13 @@
   .resultado-prorrateo .dia-res {
     border-radius: 6px; padding: 4px 8px; font-weight: bold; min-width: 54px; text-align: center;
   }
+  table.prorrateo-tabla tfoot td {
+    padding: 8px 3px; border-top: 2px solid var(--petroleo); font-weight: bold; text-align: center; font-size: 13px;
+  }
+  table.prorrateo-tabla tfoot td.res-dia.ok { background: #E3F2EE; color: var(--petroleo); }
+  table.prorrateo-tabla tfoot td.res-dia.medio { background: #FEF3DD; color: #8a6d2e; }
+  table.prorrateo-tabla tfoot td.res-dia.mal { background: #FBE6E6; color: #a33; }
+  .resultado-leyenda { font-size: 11px; color: var(--gris); margin: 6px 0 10px; }
   .dia-res.ok { background: #E3F2EE; color: var(--petroleo); }
   .dia-res.medio { background: #FEF3DD; color: #8a6d2e; }
   .dia-res.mal { background: #FBE6E6; color: #a33; }
@@ -369,14 +376,22 @@
           <tr><th>Estilo</th><th>Cliente</th><th>STD</th><th>LUN</th><th>MAR</th><th>MIÉ</th><th>JUE</th><th>VIE</th><th>SÁB</th><th></th></tr>
         </thead>
         <tbody id="prorrateo-filas"></tbody>
+        <tfoot>
+          <tr id="fila-resultado-tabla">
+            <td colspan="3" style="text-align:right;font-weight:bold;font-size:12px;color:var(--gris)">% Efic:</td>
+            <td class="res-dia">—</td><td class="res-dia">—</td><td class="res-dia">—</td>
+            <td class="res-dia">—</td><td class="res-dia">—</td><td class="res-dia">—</td>
+            <td></td>
+          </tr>
+        </tfoot>
       </table>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <div class="resultado-leyenda" id="resultado-leyenda"></div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
       <button type="button" class="agregar-colaborador" id="btn-agregar-estilo" style="flex:1">+ Agregar estilo</button>
       <button type="button" class="agregar-colaborador" id="btn-aleatorio" style="flex:1;border-color:var(--monetario);color:var(--monetario)">🎲 5 aleatorios y prorratear</button>
     </div>
-
-    <div class="resultado-prorrateo" id="resultado-prorrateo"></div>
 
     <button type="button" id="btn-guardar-prorrateo" class="guardar-prorrateo-btn" style="margin-top:10px">Guardar todo esto en Sistema</button>
     <div class="aviso" id="aviso-sistemaBatch"></div>
@@ -724,7 +739,8 @@
   function reiniciarProrrateo() {
     $('prorrateo-filas').innerHTML = '';
     for (let i = 0; i < 4; i++) agregarFilaProrrateo();
-    $('resultado-prorrateo').innerHTML = '';
+    document.querySelectorAll('#fila-resultado-tabla .res-dia').forEach(c => { c.textContent = '—'; c.className = 'res-dia'; });
+    $('resultado-leyenda').textContent = '';
   }
   $('btn-agregar-estilo').addEventListener('click', agregarFilaProrrateo);
   for (let i = 0; i < 4; i++) agregarFilaProrrateo(); // arranca con 4 filas, como el ejemplo
@@ -834,10 +850,12 @@
       const clase = diff <= 0.03 ? 'ok' : (diff <= 0.08 ? 'medio' : 'mal');
       return { dia, prendas, minutos, efic, clase };
     });
-    $('resultado-prorrateo').innerHTML =
-      '<div class="fila-resultado">' +
-      resultados.map(r => `<span class="dia-res ${r.clase}">${r.dia}: ${(r.efic*100).toFixed(0)}%</span>`).join('') +
-      '</div><div class="legend">Verde = a menos de 3 puntos del objetivo, ámbar = hasta 8, rojo = más lejos. Ajusta las cantidades hasta que la fila de arriba (prorrateo) se acerque a la fila del objetivo real.</div>';
+    const celdas = document.querySelectorAll('#fila-resultado-tabla .res-dia');
+    resultados.forEach((r, i) => {
+      celdas[i].textContent = (r.efic * 100).toFixed(0) + '%';
+      celdas[i].className = 'res-dia ' + r.clase;
+    });
+    $('resultado-leyenda').textContent = 'Verde = a menos de 3 puntos del objetivo, ámbar = hasta 8, rojo = más lejos. Ajusta las cantidades hasta que esta fila se acerque a la del objetivo real (arriba).';
   }
 
   $('btn-guardar-prorrateo').addEventListener('click', () => {
