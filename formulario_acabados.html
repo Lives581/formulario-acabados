@@ -358,6 +358,7 @@
   <!-- SISTEMA DOB -->
   <section class="panel" id="panel-sistema">
     <div class="objetivo-box" id="objetivo-box">
+      <div class="label" id="modulo-integrantes-sistema" style="font-size:12px;font-weight:bold;color:var(--petroleo);margin-bottom:6px">—</div>
       <div class="label">Eficiencia real de este módulo (objetivo a igualar) — solo informativo, esto no se guarda aquí</div>
       <div class="fila-objetivo" id="fila-objetivo">Selecciona un módulo para ver su objetivo.</div>
     </div>
@@ -365,12 +366,15 @@
     <div class="prorrateo-tabla-wrap">
       <table class="prorrateo-tabla" id="prorrateo-tabla">
         <thead>
-          <tr><th>Estilo</th><th>STD</th><th>LUN</th><th>MAR</th><th>MIÉ</th><th>JUE</th><th>VIE</th><th>SÁB</th><th></th></tr>
+          <tr><th>Estilo</th><th>Cliente</th><th>STD</th><th>LUN</th><th>MAR</th><th>MIÉ</th><th>JUE</th><th>VIE</th><th>SÁB</th><th></th></tr>
         </thead>
         <tbody id="prorrateo-filas"></tbody>
       </table>
     </div>
-    <button type="button" class="agregar-colaborador" id="btn-agregar-estilo">+ Agregar estilo</button>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button type="button" class="agregar-colaborador" id="btn-agregar-estilo" style="flex:1">+ Agregar estilo</button>
+      <button type="button" class="agregar-colaborador" id="btn-aleatorio" style="flex:1;border-color:var(--monetario);color:var(--monetario)">🎲 5 aleatorios y prorratear</button>
+    </div>
 
     <div class="resultado-prorrateo" id="resultado-prorrateo"></div>
 
@@ -482,7 +486,7 @@
       nombresDiv.className = 'nombres';
       nombresDiv.style.color = 'var(--alerta)';
     } else {
-      nombresDiv.textContent = info.integrantes.join(' · ');
+      nombresDiv.textContent = info.integrantes.map(i => `${i.cod} (${i.nombre})`).join(' · ');
       nombresDiv.className = 'nombres';
       nombresDiv.style.color = '';
     }
@@ -525,7 +529,7 @@
           // Actualiza la caché local para que se vea el cambio al toque, sin esperar el cache del servidor
           const lista = modulosPorArea[area] || [];
           const info = lista.find(m => m.modulo === modulo);
-          if (info) info.integrantes = integrantes.map(c => (trabajadores[c] ? trabajadores[c].nombre : c));
+          if (info) info.integrantes = integrantes.map(c => ({ cod: c, nombre: trabajadores[c] ? trabajadores[c].nombre : c }));
           salirModoEdicion();
           mostrarIntegrantesAutomaticos();
           if (res.aviso) alert(res.aviso);
@@ -582,8 +586,10 @@
   $('modulo').addEventListener('change', () => {
     salirModoEdicion();
     mostrarIntegrantesAutomaticos();
+    reiniciarProrrateo(); // evita arrastrar estilos/cantidades del módulo anterior
     if (document.querySelector('[data-tab="sistema"]').classList.contains('activo')) cargarObjetivoModulo();
   });
+  $('area').addEventListener('change', reiniciarProrrateo);
   reiniciarColaboradoresMini();
   const tabs = document.querySelectorAll('nav.tabs button');
   tabs.forEach(btn => {
@@ -657,9 +663,18 @@
   // ================= PRORRATEO SISTEMA (solo DOBLADO) =================
   const DIAS_PRORRATEO = ['LUN','MAR','MIÉ','JUE','VIE','SÁB']; // 6 días, igual que el reporte de INCENTIVOS SISTEMA
 
+  function buscarClientePorEstilo(clave) {
+    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][1];
+    return null;
+  }
+
   function cargarObjetivoModulo() {
     const modulo = $('modulo').value;
     if (!modulo || $('area').value !== 'DOBLADO') { $('fila-objetivo').textContent = 'Selecciona un módulo de DOBLADO para ver su objetivo.'; return; }
+    const info = (modulosPorArea['DOBLADO'] || []).find(m => m.modulo === modulo);
+    $('modulo-integrantes-sistema').textContent = info
+      ? `Módulo ${modulo} — ${info.integrantes.map(i => `${i.cod} (${i.nombre})`).join(' · ')}`
+      : `Módulo ${modulo}`;
     $('fila-objetivo').textContent = 'Cargando objetivo...';
     fetch(URL_APPS_SCRIPT + '?accion=objetivoModulo&modulo=' + encodeURIComponent(modulo))
       .then(r => r.json())
@@ -673,27 +688,135 @@
       .catch(() => { $('fila-objetivo').textContent = 'No se pudo conectar para traer el objetivo.'; });
   }
 
-  function crearFilaProrrateo() {
+  function crearFilaProrrateo(estiloInicial, stdInicial, shareInicial) {
     const tr = document.createElement('tr');
+    if (shareInicial) tr.dataset.share = JSON.stringify(shareInicial); // minutos que le "pertenecen" a esta fila, por día
     tr.innerHTML = `
-      <td><input type="text" class="pr-estilo estilo-input" placeholder="Estilo" inputmode="numeric"></td>
-      <td class="std-celda pr-std">—</td>
+      <td><input type="text" class="pr-estilo estilo-input" placeholder="Estilo" inputmode="numeric" value="${estiloInicial || ''}"></td>
+      <td class="std-celda pr-cliente">${estiloInicial ? (buscarClientePorEstilo(estiloInicial) || '—') : '—'}</td>
+      <td class="std-celda pr-std">${stdInicial != null ? stdInicial : '—'}</td>
       ${DIAS_PRORRATEO.map(() => '<td><input type="number" class="pr-cant" min="0" inputmode="numeric"></td>').join('')}
       <td><button type="button" class="quitar-fila" title="Quitar estilo">✕</button></td>
     `;
     const estiloInput = tr.querySelector('.pr-estilo');
     estiloInput.addEventListener('input', () => {
-      const std = buscarPorEstiloColF(estiloInput.value.trim()) ?? buscarClienteDob(estiloInput.value.trim());
+      const codigo = estiloInput.value.trim();
+      const std = buscarPorEstiloColF(codigo) ?? buscarClienteDob(codigo);
       tr.querySelector('.pr-std').textContent = (std != null && std !== '') ? std : '—';
+      tr.querySelector('.pr-cliente').textContent = buscarClientePorEstilo(codigo) || '—';
+      // Si esta fila tiene una porcion de minutos asignada (vino del boton
+      // aleatorio), al cambiar de estilo recalcula la cantidad sola para
+      // seguir aportando esos mismos minutos, sin tocar las demas filas.
+      if (tr.dataset.share && std) {
+        const share = JSON.parse(tr.dataset.share);
+        tr.querySelectorAll('.pr-cant').forEach((inp, i) => { inp.value = Math.round(share[i] / std); });
+      }
       recalcularProrrateo();
     });
     tr.querySelectorAll('.pr-cant').forEach(inp => inp.addEventListener('input', recalcularProrrateo));
     tr.querySelector('.quitar-fila').addEventListener('click', () => { tr.remove(); recalcularProrrateo(); });
+    if (stdInicial && shareInicial) {
+      tr.querySelectorAll('.pr-cant').forEach((inp, i) => { inp.value = Math.round(shareInicial[i] / stdInicial); });
+    }
     return tr;
   }
   function agregarFilaProrrateo() { $('prorrateo-filas').appendChild(crearFilaProrrateo()); }
+  function reiniciarProrrateo() {
+    $('prorrateo-filas').innerHTML = '';
+    for (let i = 0; i < 4; i++) agregarFilaProrrateo();
+    $('resultado-prorrateo').innerHTML = '';
+  }
   $('btn-agregar-estilo').addEventListener('click', agregarFilaProrrateo);
   for (let i = 0; i < 4; i++) agregarFilaProrrateo(); // arranca con 4 filas, como el ejemplo
+
+  $('btn-aleatorio').addEventListener('click', () => {
+    if (!objetivoModuloActual) { alert('Selecciona un módulo de DOBLADO primero (necesito su objetivo real para repartir los minutos).'); return; }
+    const candidatos = stdTabla.filter((row, i) => i > 0 && row[0] && typeof row[0] === 'number' && typeof row[2] === 'number' && row[2] > 0);
+    if (candidatos.length < 5) { alert('No hay suficientes estilos con STD válido en la hoja STD.'); return; }
+    const elegidos = [];
+    const usados = new Set();
+    while (elegidos.length < 5) {
+      const r = candidatos[Math.floor(Math.random() * candidatos.length)];
+      if (usados.has(r[0])) continue;
+      usados.add(r[0]);
+      elegidos.push({ estilo: r[0], std: r[2] });
+    }
+
+    // Reparto que minimiza el error de redondeo (en vez de dividir parejo y
+    // redondear cada fila por separado, lo cual acumula error): para cada
+    // día, reparte el minutaje objetivo entero por entero, dándoselo uno a
+    // uno al estilo que en ese momento tiene menos minutos acumulados --
+    // así el resultado final queda mucho más cerca del objetivo real.
+    const cantidadesPorFila = elegidos.map(() => Array(6).fill(0));
+    DIAS_PRORRATEO.forEach((_, d) => {
+      const obj = objetivoModuloActual.dias[d];
+      const minutosObjetivo = obj ? obj.efic * obj.minAsist : 0;
+      const minutosAcumulados = elegidos.map(() => 0);
+      let minutosRestantes = minutosObjetivo;
+      let vueltasSeguridad = 0;
+      while (minutosRestantes >= Math.min(...elegidos.map(e => e.std)) && vueltasSeguridad < 5000) {
+        vueltasSeguridad++;
+        // Le toca a la fila con menos minutos acumulados hasta ahora, entre las que caben en lo que resta
+        let idxElegido = -1, menorAcumulado = Infinity;
+        elegidos.forEach((e, i) => {
+          if (e.std <= minutosRestantes && minutosAcumulados[i] < menorAcumulado) { menorAcumulado = minutosAcumulados[i]; idxElegido = i; }
+        });
+        if (idxElegido === -1) break; // ninguna fila cabe ya en lo que resta
+        cantidadesPorFila[idxElegido][d]++;
+        minutosAcumulados[idxElegido] += elegidos[idxElegido].std;
+        minutosRestantes -= elegidos[idxElegido].std;
+      }
+    });
+
+    // Ajuste fino: el reparto de arriba minimiza el error en minutos, pero el
+    // objetivo real es que el % EFICIENCIA REDONDEADO (el que se ve en pantalla,
+    // ej. "69%") coincida exacto -- igual que hace Lady a mano. Prueba sumar o
+    // restar una prenda a la fila que más ayude, hasta que el redondeo coincida
+    // o se agoten los intentos.
+    DIAS_PRORRATEO.forEach((_, d) => {
+      const obj = objetivoModuloActual.dias[d];
+      if (!obj || !obj.minAsist) return;
+      const targetPct = Math.round(obj.efic * 100);
+      let intentos = 0;
+      while (intentos < 200) {
+        intentos++;
+        const minutosActuales = elegidos.reduce((sum, e, i) => sum + cantidadesPorFila[i][d] * e.std, 0);
+        const pctActual = Math.round((minutosActuales / obj.minAsist) * 100);
+        if (pctActual === targetPct) break;
+        const subir = pctActual < targetPct;
+        // Busca la fila cuyo cambio de 1 prenda (sumar o restar) acerque mas el % al objetivo
+        let mejorIdx = -1, mejorDiferencia = Infinity;
+        elegidos.forEach((e, i) => {
+          if (subir) {
+            const nuevoMin = minutosActuales + e.std;
+            const nuevoPct = Math.round((nuevoMin / obj.minAsist) * 100);
+            const diff = Math.abs(nuevoPct - targetPct);
+            if (diff < mejorDiferencia) { mejorDiferencia = diff; mejorIdx = i; }
+          } else if (cantidadesPorFila[i][d] > 0) {
+            const nuevoMin = minutosActuales - e.std;
+            const nuevoPct = Math.round((nuevoMin / obj.minAsist) * 100);
+            const diff = Math.abs(nuevoPct - targetPct);
+            if (diff < mejorDiferencia) { mejorDiferencia = diff; mejorIdx = i; }
+          }
+        });
+        if (mejorIdx === -1 || mejorDiferencia >= Math.abs(pctActual - targetPct)) break; // ya no mejora, para no dar vueltas infinitas
+        cantidadesPorFila[mejorIdx][d] += subir ? 1 : -1;
+      }
+    });
+
+    $('prorrateo-filas').innerHTML = '';
+    elegidos.forEach((el, i) => {
+      // La "porción" que se guarda para el auto-recálculo es la que
+      // realmente se logró asignar (cantidad × std), no un reparto teórico
+      // parejo -- así, si luego cambia el estilo, mantiene ese mismo aporte
+      // ajustado en vez de volver a un reparto menos preciso.
+      const shareLogrado = cantidadesPorFila[i].map(c => c * el.std);
+      const tr = crearFilaProrrateo(el.estilo, el.std, shareLogrado);
+      tr.querySelectorAll('.pr-cant').forEach((inp, d) => { inp.value = cantidadesPorFila[i][d] || ''; });
+      $('prorrateo-filas').appendChild(tr);
+    });
+    recalcularProrrateo();
+  });
 
   function recalcularProrrateo() {
     const filas = Array.from(document.querySelectorAll('#prorrateo-filas tr'));
