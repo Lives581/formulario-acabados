@@ -57,6 +57,21 @@
     width: 100%;
   }
   .barra-fecha .campo { flex: 1; min-width: 130px; }
+  .legend-semana { font-size: 12px; color: var(--gris); margin: -8px 0 14px 2px; }
+  .item-hoy .quitar-item {
+    background: none; border: none; color: var(--alerta);
+    font-size: 12px; cursor: pointer; padding: 0 0 0 10px; text-decoration: underline;
+  }
+  .zona-peligro {
+    margin-top: 30px;
+    border-top: 1px dashed #d8dede;
+    padding-top: 14px;
+    text-align: center;
+  }
+  .zona-peligro button {
+    background: none; border: 1px solid var(--alerta); color: var(--alerta);
+    padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
+  }
 
   .integrantes-box {
     background: #fff;
@@ -67,7 +82,11 @@
     display: none;
   }
   .integrantes-box.visible { display: block; }
-  .integrantes-box .label { font-size: 12px; color: var(--gris); margin-bottom: 6px; }
+  .integrantes-box .label { font-size: 12px; color: var(--gris); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+  .link-editar {
+    background: none; border: none; color: var(--esmeralda);
+    font-size: 12px; font-weight: bold; cursor: pointer; padding: 0;
+  }
   .integrantes-box .nombres { font-size: 15px; font-weight: bold; color: var(--petroleo); }
   .integrantes-box .colaborador-mini {
     display: flex;
@@ -229,6 +248,10 @@
       <label for="fecha">Fecha</label>
       <input type="date" id="fecha">
     </div>
+    <div class="campo" style="max-width:110px">
+      <label for="semana">Semana N°</label>
+      <input type="number" id="semana" min="1" max="53" placeholder="Ej: 27">
+    </div>
     <div class="campo">
       <label for="area">Área</label>
       <select id="area">
@@ -243,11 +266,14 @@
       <select id="modulo"><option value="">Cargando...</option></select>
     </div>
   </div>
+  <div class="legend-semana" id="legend-semana"></div>
 
   <div class="integrantes-box visible" id="integrantes-box">
-    <div class="label">Integrantes de este módulo (escribe el código de cada uno)</div>
-    <div id="colaboradores-modulo"></div>
-    <button type="button" class="agregar-colaborador" id="btn-agregar-colaborador">+ Agregar otro colaborador</button>
+    <div class="label">Integrantes de este módulo <button type="button" id="btn-editar-integrantes" class="link-editar">✎ Cambiar integrantes</button></div>
+    <div class="nombres" id="integrantes-nombres"></div>
+    <div id="colaboradores-modulo" style="display:none"></div>
+    <button type="button" class="agregar-colaborador" id="btn-agregar-colaborador" style="display:none">+ Agregar otro colaborador</button>
+    <button type="button" id="btn-guardar-integrantes" class="agregar-colaborador" style="display:none">Guardar esta asignación</button>
   </div>
 
   <nav class="tabs">
@@ -326,6 +352,10 @@
     <div id="lista-items"></div>
   </div>
 
+  <div class="zona-peligro">
+    <button type="button" id="btn-limpiar-todo">🧹 Borrar datos de prueba y empezar de cero</button>
+  </div>
+
 </main>
 
 <footer>Confidencial — Uso Interno · LIVES</footer>
@@ -351,6 +381,10 @@
         trabajadores = data.trabajadores || {};
         modulosPorArea = data.modulos || {};
         stdTabla = data.std || [];
+        if (data.semana && !$('semana').value) {
+          $('semana').value = data.semana;
+          $('legend-semana').textContent = `Semana actual en el Sheet: ${data.semana}. Cámbiala aquí solo si empieza una semana nueva.`;
+        }
         poblarModulos();
         console.log('Catálogo cargado OK:', Object.keys(trabajadores).length, 'trabajadores,', stdTabla.length, 'filas STD');
       })
@@ -373,7 +407,75 @@
     const area = $('area').value;
     const lista = modulosPorArea[area] || [];
     $('modulo').innerHTML = lista.map(m => `<option value="${m.modulo}">${m.modulo}</option>`).join('');
+    salirModoEdicion();
+    mostrarIntegrantesAutomaticos();
   }
+
+  function mostrarIntegrantesAutomaticos() {
+    const area = $('area').value;
+    const modSel = $('modulo').value;
+    const lista = modulosPorArea[area] || [];
+    const info = lista.find(m => m.modulo === modSel);
+    const nombresDiv = $('integrantes-nombres');
+    if (!info || info.integrantes.length === 0) {
+      nombresDiv.textContent = 'Nadie asignado todavía a este módulo — usa "Cambiar integrantes".';
+      nombresDiv.className = 'nombres';
+      nombresDiv.style.color = 'var(--alerta)';
+    } else {
+      nombresDiv.textContent = info.integrantes.join(' · ');
+      nombresDiv.className = 'nombres';
+      nombresDiv.style.color = '';
+    }
+  }
+
+  let modoEdicionIntegrantes = false;
+  function entrarModoEdicion() {
+    modoEdicionIntegrantes = true;
+    $('integrantes-nombres').style.display = 'none';
+    $('colaboradores-modulo').style.display = 'block';
+    $('btn-agregar-colaborador').style.display = 'block';
+    $('btn-guardar-integrantes').style.display = 'block';
+    $('btn-editar-integrantes').textContent = 'Cancelar';
+    reiniciarColaboradoresMini();
+  }
+  function salirModoEdicion() {
+    modoEdicionIntegrantes = false;
+    $('integrantes-nombres').style.display = 'block';
+    $('colaboradores-modulo').style.display = 'none';
+    $('btn-agregar-colaborador').style.display = 'none';
+    $('btn-guardar-integrantes').style.display = 'none';
+    $('btn-editar-integrantes').textContent = '✎ Cambiar integrantes';
+  }
+  $('btn-editar-integrantes').addEventListener('click', () => {
+    if (modoEdicionIntegrantes) { salirModoEdicion(); } else { entrarModoEdicion(); }
+  });
+
+  $('btn-guardar-integrantes').addEventListener('click', () => {
+    const modulo = $('modulo').value;
+    const area = $('area').value;
+    const integrantes = obtenerCodigosColaboradores();
+    if (!modulo) { alert('Selecciona un módulo primero.'); return; }
+    if (integrantes.length === 0) { alert('Escribe el código de al menos un colaborador.'); return; }
+    const btn = $('btn-guardar-integrantes');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'asignarModulo', modulo, area, integrantes }) })
+      .then(r => r.json())
+      .then(res => {
+        if (res.ok) {
+          // Actualiza la caché local para que se vea el cambio al toque, sin esperar el cache del servidor
+          const lista = modulosPorArea[area] || [];
+          const info = lista.find(m => m.modulo === modulo);
+          if (info) info.integrantes = integrantes.map(c => (trabajadores[c] ? trabajadores[c].nombre : c));
+          salirModoEdicion();
+          mostrarIntegrantesAutomaticos();
+          if (res.aviso) alert(res.aviso);
+        } else {
+          alert(res.error || 'No se pudo guardar la asignación.');
+        }
+      })
+      .catch(() => alert('No se pudo conectar. Intenta de nuevo.'))
+      .finally(() => { btn.disabled = false; btn.textContent = 'Guardar esta asignación'; });
+  });
 
   // --- Bloques editables de colaborador dentro del módulo (código -> nombre detectado) ---
   function crearBloqueColaboradorMini(indice) {
@@ -417,6 +519,7 @@
   }
 
   $('area').addEventListener('change', () => { poblarModulos(); actualizarPestanasPorArea(); });
+  $('modulo').addEventListener('change', () => { salirModoEdicion(); mostrarIntegrantesAutomaticos(); });
   reiniciarColaboradoresMini();
   const tabs = document.querySelectorAll('nav.tabs button');
   tabs.forEach(btn => {
@@ -498,7 +601,8 @@
     if (!fecha) { mostrarAviso(tipo, 'Falta la fecha.', true); return; }
     if (!modulo) { mostrarAviso(tipo, 'Selecciona un módulo.', true); return; }
 
-    let payload = { tipo, fecha, area, modulo };
+    const semana = $('semana').value;
+    let payload = { tipo, fecha, area, modulo, semana };
     let etiqueta = '';
 
     if (tipo === 'produccionModulo') {
@@ -508,20 +612,17 @@
       const stdManual = $('p-std').value;
       const improd = $('p-improd').value;
       const apoyo = $('p-apoyo').value;
-      const integrantes = obtenerCodigosColaboradores();
       if (!clave || !cant) { mostrarAviso(tipo, 'Completa estilo y cantidad.', true); return; }
       if (area === 'PLANCHA' && !subcategoria) { mostrarAviso(tipo, 'Selecciona la subcategoría (R/A/B/C).', true); return; }
-      if (integrantes.length === 0) { mostrarAviso(tipo, 'Escribe el código de al menos un colaborador.', true); return; }
       payload.clave = clave;
       payload.subcategoria = area === 'PLANCHA' ? subcategoria : '';
       payload.cant = Number(cant);
       payload.stdManual = stdManual ? Number(stdManual) : '';
       payload.improd = improd ? Number(improd) : '';
       payload.apoyo = apoyo ? Number(apoyo) : '';
-      payload.integrantes = integrantes;
       etiqueta = area === 'PLANCHA'
-        ? `${modulo} (${integrantes.join(', ')}) · estilo ${clave} · ${subcategoria} · ${cant} pdas`
-        : `${modulo} (${integrantes.join(', ')}) · ${clave} · ${cant} pdas`;
+        ? `${modulo} · estilo ${clave} · ${subcategoria} · ${cant} pdas`
+        : `${modulo} · ${clave} · ${cant} pdas`;
     } else if (tipo === 'sistema') {
       const estilo = $('s-estilo').value.trim();
       const cant = $('s-cant').value;
@@ -545,7 +646,7 @@
       .then(res => {
         if (res.ok) {
           mostrarAviso(tipo, res.aviso ? ('Guardado. ' + res.aviso) : 'Guardado.', !!res.aviso);
-          agregarALista(tipo, etiqueta);
+          agregarALista(tipo, etiqueta, res.hoja, res.fila);
           limpiarFormulario(tipo);
         } else {
           mostrarAviso(tipo, res.error || 'Error al guardar.', true);
@@ -570,7 +671,6 @@
       $('p-clave').value = ''; $('p-cant').value = ''; $('p-std').value = '';
       $('p-improd').value = ''; $('p-apoyo').value = ''; $('p-subcategoria').value = '';
       $('p-std-detectado').textContent = ''; $('p-std-detectado').className = 'std-detectado';
-      reiniciarColaboradoresMini();
     } else if (tipo === 'sistema') {
       $('s-estilo').value = ''; $('s-cant').value = '';
     } else if (tipo === 'rechazo') {
@@ -578,14 +678,56 @@
     }
   }
 
-  function agregarALista(tipo, etiqueta) {
+  function agregarALista(tipo, etiqueta, hoja, fila) {
     contador++;
     $('contador-hoy').textContent = contador;
     const div = document.createElement('div');
     div.className = 'item-hoy';
-    div.innerHTML = `<span>${etiqueta}</span><span class="tipo">${tipo}</span>`;
+    const quitar = hoja && fila
+      ? `<button type="button" class="quitar-item" data-hoja="${hoja}" data-fila="${fila}">Eliminar</button>`
+      : '';
+    div.innerHTML = `<span>${etiqueta}<span class="tipo"> · ${tipo}</span></span><span>${quitar}</span>`;
     $('lista-items').prepend(div);
+    const btnQuitar = div.querySelector('.quitar-item');
+    if (btnQuitar) {
+      btnQuitar.addEventListener('click', () => {
+        if (!confirm('¿Eliminar este registro? No se puede deshacer.')) return;
+        btnQuitar.disabled = true;
+        btnQuitar.textContent = '...';
+        fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'eliminarFila', hoja, fila }) })
+          .then(r => r.json())
+          .then(res => {
+            if (res.ok) { div.remove(); }
+            else { alert(res.error || 'No se pudo eliminar.'); btnQuitar.disabled = false; btnQuitar.textContent = 'Eliminar'; }
+          })
+          .catch(() => { alert('No se pudo conectar.'); btnQuitar.disabled = false; btnQuitar.textContent = 'Eliminar'; });
+      });
+    }
   }
+
+  // --- Zona de peligro: borrar todos los datos de prueba ---
+  $('btn-limpiar-todo').addEventListener('click', () => {
+    const primeraConfirmacion = confirm(
+      '¿Borrar TODOS los datos de prueba digitados hasta ahora?\n\n' +
+      'Esto limpia PRODUCCION MODULO, SISTEMA DOB, AUDITORIA DOB, REGISTRO y TIEMPOS.\n' +
+      'NO toca TRABAJADORES, STD, PARAMETROS, HO ni HISTORIAL.\n\n' +
+      'No se puede deshacer.'
+    );
+    if (!primeraConfirmacion) return;
+    const texto = prompt('Para confirmar, escribe BORRAR en mayúsculas:');
+    if (texto !== 'BORRAR') { alert('No coincide, cancelado.'); return; }
+    const btn = $('btn-limpiar-todo');
+    btn.disabled = true;
+    btn.textContent = 'Borrando...';
+    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'limpiarTodo', confirmacion: 'BORRAR' }) })
+      .then(r => r.json())
+      .then(res => {
+        alert(res.ok ? res.mensaje : ('Error: ' + res.error));
+        if (res.ok) { $('lista-items').innerHTML = ''; contador = 0; $('contador-hoy').textContent = '0'; }
+      })
+      .catch(() => alert('No se pudo conectar. Intenta de nuevo.'))
+      .finally(() => { btn.disabled = false; btn.textContent = '🧹 Borrar datos de prueba y empezar de cero'; });
+  });
 
   actualizarPestanasPorArea();
 </script>
