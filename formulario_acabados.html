@@ -632,6 +632,13 @@
     for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][5];
     return null;
   }
+  function buscarPorEstiloColE(clave) {
+    // T.PLANCHA (columna E de STD) -- la correcta para PLANCHA. Antes se
+    // usaba por error la F (T.DOB/EMB); no cambiaba el resultado en las 4
+    // filas R/A/B/C porque ahí E y F son iguales, pero quedaba mal apuntada.
+    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][4];
+    return null;
+  }
   function buscarPorEstiloColD(clave) {
     for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][3];
     return null;
@@ -651,7 +658,7 @@
   function detectarStd(area, clave, subcategoria) {
     if (area === 'PLANCHA') {
       if (!subcategoria) return null;
-      return buscarPorEstiloColF(subcategoria.toUpperCase());
+      return buscarPorEstiloColE(subcategoria.toUpperCase());
     }
     if (!clave) return null;
     if (area === 'VAPOR') return buscarPorEstiloColD(clave);
@@ -680,6 +687,13 @@
 
   function buscarClientePorEstilo(clave) {
     for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][1];
+    return null;
+  }
+  function buscarTotalPorEstilo(clave) {
+    // T.TOTAL (columna C de STD) -- es el que usa SISTEMA DOB, distinto del
+    // T.DOB/EMB (columna F) que usa Producción. Confirmado con los 4 estilos
+    // de ejemplo de Lady: 25175->3.04, 23366->1.5, 24298->3.22, 23580->2.86.
+    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][2];
     return null;
   }
 
@@ -716,7 +730,7 @@
     const estiloInput = tr.querySelector('.pr-estilo');
     estiloInput.addEventListener('input', () => {
       const codigo = estiloInput.value.trim();
-      const std = buscarPorEstiloColF(codigo) ?? buscarClienteDob(codigo);
+      const std = buscarTotalPorEstilo(codigo);
       tr.querySelector('.pr-std').textContent = (std != null && std !== '') ? std : '—';
       tr.querySelector('.pr-cliente').textContent = buscarClientePorEstilo(codigo) || '—';
       // Si esta fila tiene una porcion de minutos asignada (vino del boton
