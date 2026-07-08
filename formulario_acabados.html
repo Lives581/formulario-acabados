@@ -62,6 +62,10 @@
     background: none; border: none; color: var(--alerta);
     font-size: 12px; cursor: pointer; padding: 0 0 0 10px; text-decoration: underline;
   }
+  .item-hoy .corregir-item {
+    background: none; border: none; color: var(--petroleo);
+    font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline;
+  }
   .zona-peligro {
     margin-top: 30px;
     border-top: 1px dashed #d8dede;
@@ -72,6 +76,34 @@
     background: none; border: 1px solid var(--alerta); color: var(--alerta);
     padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
   }
+  .objetivo-box {
+    background: #F6F9F8; border: 1px solid var(--esmeralda); border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 14px;
+  }
+  .objetivo-box .label { font-size: 11px; color: var(--gris); margin-bottom: 6px; display: block; }
+  .fila-objetivo { display: flex; gap: 8px; flex-wrap: wrap; font-size: 13px; font-weight: bold; color: var(--petroleo); }
+  .fila-objetivo .dia-obj { background: #fff; border-radius: 6px; padding: 4px 8px; }
+  .prorrateo-tabla-wrap { overflow-x: auto; margin-bottom: 10px; }
+  table.prorrateo-tabla { border-collapse: collapse; width: 100%; min-width: 560px; }
+  table.prorrateo-tabla th {
+    background: var(--petroleo); color: #fff; font-size: 11px; padding: 6px 4px; text-align: center;
+  }
+  table.prorrateo-tabla td { padding: 3px; text-align: center; }
+  table.prorrateo-tabla input {
+    width: 100%; min-width: 46px; font-size: 13px; padding: 6px 2px; text-align: center;
+    border: 1px solid #d8dede; border-radius: 4px;
+  }
+  table.prorrateo-tabla .estilo-input { min-width: 80px; text-align: left; padding-left: 6px; }
+  table.prorrateo-tabla .std-celda { font-size: 12px; color: var(--gris); font-weight: bold; }
+  table.prorrateo-tabla .quitar-fila { background: none; border: none; color: var(--alerta); cursor: pointer; font-size: 15px; }
+  .resultado-prorrateo { font-size: 13px; }
+  .resultado-prorrateo .fila-resultado { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .resultado-prorrateo .dia-res {
+    border-radius: 6px; padding: 4px 8px; font-weight: bold; min-width: 54px; text-align: center;
+  }
+  .dia-res.ok { background: #E3F2EE; color: var(--petroleo); }
+  .dia-res.medio { background: #FEF3DD; color: #8a6d2e; }
+  .dia-res.mal { background: #FBE6E6; color: #a33; }
 
   .integrantes-box {
     background: #fff;
@@ -190,7 +222,7 @@
   .std-detectado.ok { color: var(--petroleo); font-weight: bold; }
   .std-detectado.error { color: var(--alerta); }
 
-  button.guardar {
+  button.guardar, .guardar-prorrateo-btn {
     width: 100%;
     background: var(--esmeralda);
     color: #fff;
@@ -325,16 +357,41 @@
 
   <!-- SISTEMA DOB -->
   <section class="panel" id="panel-sistema">
-    <div class="campo-grupo">
-      <label>Estilo</label>
-      <input type="text" id="s-estilo" placeholder="Ej: 25175" inputmode="numeric">
+    <div class="objetivo-box" id="objetivo-box">
+      <div class="label">Eficiencia real de este módulo (objetivo a igualar) — solo informativo, esto no se guarda aquí</div>
+      <div class="fila-objetivo" id="fila-objetivo">Selecciona un módulo para ver su objetivo.</div>
     </div>
-    <div class="campo-grupo">
-      <label>Cantidad</label>
-      <input type="number" id="s-cant" min="0" inputmode="numeric">
+
+    <div class="prorrateo-tabla-wrap">
+      <table class="prorrateo-tabla" id="prorrateo-tabla">
+        <thead>
+          <tr><th>Estilo</th><th>STD</th><th>LUN</th><th>MAR</th><th>MIÉ</th><th>JUE</th><th>VIE</th><th>SÁB</th><th></th></tr>
+        </thead>
+        <tbody id="prorrateo-filas"></tbody>
+      </table>
     </div>
-    <button class="guardar" data-tipo="sistema">Agregar producción sistema</button>
-    <div class="aviso" id="aviso-sistema"></div>
+    <button type="button" class="agregar-colaborador" id="btn-agregar-estilo">+ Agregar estilo</button>
+
+    <div class="resultado-prorrateo" id="resultado-prorrateo"></div>
+
+    <button type="button" id="btn-guardar-prorrateo" class="guardar-prorrateo-btn" style="margin-top:10px">Guardar todo esto en Sistema</button>
+    <div class="aviso" id="aviso-sistemaBatch"></div>
+
+    <details style="margin-top:16px">
+      <summary style="cursor:pointer;font-size:12px;color:var(--gris)">Agregar un solo estilo suelto (sin prorrateo, un día a la vez)</summary>
+      <div style="margin-top:10px">
+        <div class="campo-grupo">
+          <label>Estilo</label>
+          <input type="text" id="s-estilo" placeholder="Ej: 25175" inputmode="numeric">
+        </div>
+        <div class="campo-grupo">
+          <label>Cantidad</label>
+          <input type="number" id="s-cant" min="0" inputmode="numeric">
+        </div>
+        <button class="guardar" data-tipo="sistema">Agregar producción sistema</button>
+        <div class="aviso" id="aviso-sistema"></div>
+      </div>
+    </details>
   </section>
 
   <!-- RECHAZO -->
@@ -367,6 +424,8 @@
   let trabajadores = {};
   let modulosPorArea = {};  // { PLANCHA: [{modulo:'PL-1', integrantes:[...]}], ... }
   let stdTabla = [];
+  let fechaInicioSemana = ''; // lunes de la semana activa, yyyy-MM-dd
+  let objetivoModuloActual = null; // {dias:[{minAsist,efic}x7]} del módulo seleccionado
   let contador = 0;
 
   const hoy = new Date();
@@ -385,6 +444,7 @@
           $('semana').value = data.semana;
           $('legend-semana').textContent = `Semana actual en el Sheet: ${data.semana}. Cámbiala aquí solo si empieza una semana nueva.`;
         }
+        fechaInicioSemana = data.fechaInicio || '';
         poblarModulos();
         console.log('Catálogo cargado OK:', Object.keys(trabajadores).length, 'trabajadores,', stdTabla.length, 'filas STD');
       })
@@ -519,7 +579,11 @@
   }
 
   $('area').addEventListener('change', () => { poblarModulos(); actualizarPestanasPorArea(); });
-  $('modulo').addEventListener('change', () => { salirModoEdicion(); mostrarIntegrantesAutomaticos(); });
+  $('modulo').addEventListener('change', () => {
+    salirModoEdicion();
+    mostrarIntegrantesAutomaticos();
+    if (document.querySelector('[data-tab="sistema"]').classList.contains('activo')) cargarObjetivoModulo();
+  });
   reiniciarColaboradoresMini();
   const tabs = document.querySelectorAll('nav.tabs button');
   tabs.forEach(btn => {
@@ -528,6 +592,7 @@
       btn.classList.add('activo');
       document.querySelectorAll('.panel').forEach(p => p.classList.remove('activo'));
       document.getElementById('panel-' + btn.dataset.tab).classList.add('activo');
+      if (btn.dataset.tab === 'sistema') cargarObjetivoModulo();
     });
   });
 
@@ -589,10 +654,111 @@
   $('p-clave').addEventListener('input', actualizarStd);
   $('p-subcategoria').addEventListener('change', actualizarStd);
 
+  // ================= PRORRATEO SISTEMA (solo DOBLADO) =================
+  const DIAS_PRORRATEO = ['LUN','MAR','MIÉ','JUE','VIE','SÁB']; // 6 días, igual que el reporte de INCENTIVOS SISTEMA
+
+  function cargarObjetivoModulo() {
+    const modulo = $('modulo').value;
+    if (!modulo || $('area').value !== 'DOBLADO') { $('fila-objetivo').textContent = 'Selecciona un módulo de DOBLADO para ver su objetivo.'; return; }
+    $('fila-objetivo').textContent = 'Cargando objetivo...';
+    fetch(URL_APPS_SCRIPT + '?accion=objetivoModulo&modulo=' + encodeURIComponent(modulo))
+      .then(r => r.json())
+      .then(res => {
+        if (!res.ok) { $('fila-objetivo').textContent = 'No se pudo cargar el objetivo: ' + (res.error || ''); objetivoModuloActual = null; return; }
+        objetivoModuloActual = res;
+        $('fila-objetivo').innerHTML = DIAS_PRORRATEO.map((d, i) =>
+          `<span class="dia-obj">${d}: ${(res.dias[i].efic * 100).toFixed(0)}%</span>`).join('');
+        recalcularProrrateo();
+      })
+      .catch(() => { $('fila-objetivo').textContent = 'No se pudo conectar para traer el objetivo.'; });
+  }
+
+  function crearFilaProrrateo() {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" class="pr-estilo estilo-input" placeholder="Estilo" inputmode="numeric"></td>
+      <td class="std-celda pr-std">—</td>
+      ${DIAS_PRORRATEO.map(() => '<td><input type="number" class="pr-cant" min="0" inputmode="numeric"></td>').join('')}
+      <td><button type="button" class="quitar-fila" title="Quitar estilo">✕</button></td>
+    `;
+    const estiloInput = tr.querySelector('.pr-estilo');
+    estiloInput.addEventListener('input', () => {
+      const std = buscarPorEstiloColF(estiloInput.value.trim()) ?? buscarClienteDob(estiloInput.value.trim());
+      tr.querySelector('.pr-std').textContent = (std != null && std !== '') ? std : '—';
+      recalcularProrrateo();
+    });
+    tr.querySelectorAll('.pr-cant').forEach(inp => inp.addEventListener('input', recalcularProrrateo));
+    tr.querySelector('.quitar-fila').addEventListener('click', () => { tr.remove(); recalcularProrrateo(); });
+    return tr;
+  }
+  function agregarFilaProrrateo() { $('prorrateo-filas').appendChild(crearFilaProrrateo()); }
+  $('btn-agregar-estilo').addEventListener('click', agregarFilaProrrateo);
+  for (let i = 0; i < 4; i++) agregarFilaProrrateo(); // arranca con 4 filas, como el ejemplo
+
+  function recalcularProrrateo() {
+    const filas = Array.from(document.querySelectorAll('#prorrateo-filas tr'));
+    const resultados = DIAS_PRORRATEO.map((dia, dIdx) => {
+      let prendas = 0, minutos = 0;
+      filas.forEach(tr => {
+        const estilo = tr.querySelector('.pr-estilo').value.trim();
+        const std = parseFloat(tr.querySelector('.pr-std').textContent) || 0;
+        const cant = parseFloat(tr.querySelectorAll('.pr-cant')[dIdx].value) || 0;
+        if (estilo && cant > 0) { prendas += cant; minutos += cant * std; }
+      });
+      const objetivo = objetivoModuloActual ? objetivoModuloActual.dias[dIdx] : null;
+      const efic = objetivo && objetivo.minAsist > 0 ? minutos / objetivo.minAsist : 0;
+      const diff = objetivo ? Math.abs(efic - objetivo.efic) : 1;
+      const clase = diff <= 0.03 ? 'ok' : (diff <= 0.08 ? 'medio' : 'mal');
+      return { dia, prendas, minutos, efic, clase };
+    });
+    $('resultado-prorrateo').innerHTML =
+      '<div class="fila-resultado">' +
+      resultados.map(r => `<span class="dia-res ${r.clase}">${r.dia}: ${(r.efic*100).toFixed(0)}%</span>`).join('') +
+      '</div><div class="legend">Verde = a menos de 3 puntos del objetivo, ámbar = hasta 8, rojo = más lejos. Ajusta las cantidades hasta que la fila de arriba (prorrateo) se acerque a la fila del objetivo real.</div>';
+  }
+
+  $('btn-guardar-prorrateo').addEventListener('click', () => {
+    const modulo = $('modulo').value;
+    if (!modulo) { mostrarAviso('sistemaBatch', 'Selecciona un módulo primero.', true); return; }
+    if (!fechaInicioSemana) { mostrarAviso('sistemaBatch', 'No se pudo determinar el lunes de la semana activa. Recarga la página.', true); return; }
+    const lunes = new Date(fechaInicioSemana + 'T00:00:00');
+    const filas = Array.from(document.querySelectorAll('#prorrateo-filas tr'));
+    const entradas = [];
+    filas.forEach(tr => {
+      const estilo = tr.querySelector('.pr-estilo').value.trim();
+      if (!estilo) return;
+      tr.querySelectorAll('.pr-cant').forEach((inp, dIdx) => {
+        const cant = Number(inp.value);
+        if (cant > 0) {
+          const fechaDia = new Date(lunes); fechaDia.setDate(fechaDia.getDate() + dIdx);
+          entradas.push({ fecha: fechaDia.toISOString().slice(0,10), estilo, cant });
+        }
+      });
+    });
+    if (entradas.length === 0) { mostrarAviso('sistemaBatch', 'No hay cantidades para guardar.', true); return; }
+    const btn = $('btn-guardar-prorrateo');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'sistemaBatch', modulo, entradas }) })
+      .then(r => r.json())
+      .then(res => {
+        if (res.ok) {
+          mostrarAviso('sistemaBatch', `Guardado: ${res.guardados} filas en SISTEMA DOB.`, false);
+          agregarALista('sistema', `${modulo} · prorrateo (${res.guardados} filas)`, null, null);
+        } else {
+          mostrarAviso('sistemaBatch', res.error || 'Error al guardar.', true);
+        }
+      })
+      .catch(() => mostrarAviso('sistemaBatch', 'No se confirmó la respuesta. Revisa SISTEMA DOB antes de reintentar.', true))
+      .finally(() => { btn.disabled = false; btn.textContent = 'Guardar todo esto en Sistema'; });
+  });
+
   // --- Guardar ---
   document.querySelectorAll('button.guardar').forEach(btn => {
     btn.addEventListener('click', () => guardar(btn.dataset.tipo, btn));
   });
+
+  let entradasGuardadas = {}; // 'HOJA_fila' -> payload usado para guardar, para poder "Corregir"
+  let editando = null; // {hoja, fila, tipo} cuando se está corrigiendo una fila existente
 
   function guardar(tipo, btn) {
     const fecha = $('fecha').value;
@@ -620,9 +786,10 @@
       payload.stdManual = stdManual ? Number(stdManual) : '';
       payload.improd = improd ? Number(improd) : '';
       payload.apoyo = apoyo ? Number(apoyo) : '';
+      const nIntegrantes = ((modulosPorArea[area] || []).find(m => m.modulo === modulo) || {}).integrantes || [];
       etiqueta = area === 'PLANCHA'
-        ? `${modulo} · estilo ${clave} · ${subcategoria} · ${cant} pdas`
-        : `${modulo} · ${clave} · ${cant} pdas`;
+        ? `Módulo ${modulo} (${nIntegrantes.length || '?'} integrantes) · ${cant} pdas · estilo ${clave} (${subcategoria})`
+        : `Módulo ${modulo} (${nIntegrantes.length || '?'} integrantes) · ${cant} pdas · estilo ${clave}`;
     } else if (tipo === 'sistema') {
       const estilo = $('s-estilo').value.trim();
       const cant = $('s-cant').value;
@@ -637,16 +804,30 @@
       etiqueta = `${modulo} · ${cant} rechazadas`;
     }
 
+    const corrigiendo = editando && editando.tipo === tipo;
+    if (corrigiendo) {
+      payload.tipo = 'actualizarFila';
+      payload.hoja = editando.hoja;
+      payload.fila = editando.fila;
+    }
+
     btn.disabled = true;
     const textoOriginal = btn.textContent;
-    btn.textContent = 'Guardando...';
+    btn.textContent = corrigiendo ? 'Guardando corrección...' : 'Guardando...';
 
     fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify(payload) })
       .then(r => r.json())
       .then(res => {
         if (res.ok) {
           mostrarAviso(tipo, res.aviso ? ('Guardado. ' + res.aviso) : 'Guardado.', !!res.aviso);
-          agregarALista(tipo, etiqueta, res.hoja, res.fila);
+          if (corrigiendo) {
+            actualizarItemLista(editando.hoja, editando.fila, etiqueta, tipo);
+            entradasGuardadas[editando.hoja + '_' + editando.fila] = { tipo, payload };
+            salirModoCorreccion();
+          } else {
+            agregarALista(tipo, etiqueta, res.hoja, res.fila);
+            if (res.hoja && res.fila) entradasGuardadas[res.hoja + '_' + res.fila] = { tipo, payload };
+          }
           limpiarFormulario(tipo);
         } else {
           mostrarAviso(tipo, res.error || 'Error al guardar.', true);
@@ -655,8 +836,58 @@
       .catch(() => mostrarAviso(tipo, 'No se confirmó la respuesta (puede tardar la primera vez). Antes de reintentar, revisa el Sheet — quizá sí se guardó y reintentar duplicaría la fila.', true))
       .finally(() => {
         btn.disabled = false;
-        btn.textContent = textoOriginal;
+        btn.textContent = editando ? 'Guardar corrección' : textoOriginal;
       });
+  }
+
+  function entrarModoCorreccion(tipo, hoja, fila) {
+    const guardado = entradasGuardadas[hoja + '_' + fila];
+    if (!guardado) { alert('No tengo los datos originales de esta fila (se perdieron al recargar la página). Ábrela directo en el Sheet para corregirla.'); return; }
+    editando = { hoja, fila, tipo };
+    const p = guardado.payload;
+    $('fecha').value = p.fecha;
+    $('area').value = p.area;
+    actualizarPestanasPorArea();
+    poblarModulos();
+    $('modulo').value = p.modulo;
+    salirModoEdicion();
+    mostrarIntegrantesAutomaticos();
+    if (tipo === 'produccionModulo') {
+      document.querySelector('[data-tab="produccion"]').click();
+      $('p-clave').value = p.clave || '';
+      $('p-subcategoria').value = p.subcategoria || '';
+      $('p-cant').value = p.cant || '';
+      $('p-std').value = p.stdManual || '';
+      $('p-improd').value = p.improd || '';
+      $('p-apoyo').value = p.apoyo || '';
+      actualizarStd();
+      document.querySelector('[data-tipo="produccionModulo"]').textContent = 'Guardar corrección';
+    } else if (tipo === 'sistema') {
+      document.querySelector('[data-tab="sistema"]').click();
+      $('s-estilo').value = p.estilo || '';
+      $('s-cant').value = p.cant || '';
+      document.querySelector('[data-tipo="sistema"]').textContent = 'Guardar corrección';
+    } else if (tipo === 'rechazo') {
+      document.querySelector('[data-tab="rechazo"]').click();
+      $('r-cant').value = p.cant || '';
+      document.querySelector('[data-tipo="rechazo"]').textContent = 'Guardar corrección';
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function salirModoCorreccion() {
+    editando = null;
+    document.querySelectorAll('button.guardar').forEach(b => {
+      if (b.textContent === 'Guardar corrección') {
+        const textos = { produccionModulo: 'Guardar producción del módulo', sistema: 'Agregar producción sistema', rechazo: 'Agregar rechazo' };
+        b.textContent = textos[b.dataset.tipo];
+      }
+    });
+  }
+
+  function actualizarItemLista(hoja, fila, etiqueta, tipo) {
+    const item = document.querySelector(`.item-hoy[data-hoja="${hoja}"][data-fila="${fila}"]`);
+    if (item) item.querySelector('.texto-item').innerHTML = `${etiqueta}<span class="tipo"> · ${tipo} (corregido)</span>`;
   }
 
   function mostrarAviso(tipo, mensaje, esError) {
@@ -683,11 +914,17 @@
     $('contador-hoy').textContent = contador;
     const div = document.createElement('div');
     div.className = 'item-hoy';
-    const quitar = hoja && fila
-      ? `<button type="button" class="quitar-item" data-hoja="${hoja}" data-fila="${fila}">Eliminar</button>`
+    if (hoja && fila) { div.dataset.hoja = hoja; div.dataset.fila = fila; }
+    const botones = hoja && fila
+      ? `<button type="button" class="corregir-item" data-hoja="${hoja}" data-fila="${fila}" data-tipo="${tipo}">✎ Corregir</button>
+         <button type="button" class="quitar-item" data-hoja="${hoja}" data-fila="${fila}">Eliminar</button>`
       : '';
-    div.innerHTML = `<span>${etiqueta}<span class="tipo"> · ${tipo}</span></span><span>${quitar}</span>`;
+    div.innerHTML = `<span class="texto-item">${etiqueta}<span class="tipo"> · ${tipo}</span></span><span>${botones}</span>`;
     $('lista-items').prepend(div);
+
+    const btnCorregir = div.querySelector('.corregir-item');
+    if (btnCorregir) btnCorregir.addEventListener('click', () => entrarModoCorreccion(tipo, hoja, fila));
+
     const btnQuitar = div.querySelector('.quitar-item');
     if (btnQuitar) {
       btnQuitar.addEventListener('click', () => {
@@ -697,7 +934,7 @@
         fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'eliminarFila', hoja, fila }) })
           .then(r => r.json())
           .then(res => {
-            if (res.ok) { div.remove(); }
+            if (res.ok) { div.remove(); delete entradasGuardadas[hoja + '_' + fila]; }
             else { alert(res.error || 'No se pudo eliminar.'); btnQuitar.disabled = false; btnQuitar.textContent = 'Eliminar'; }
           })
           .catch(() => { alert('No se pudo conectar.'); btnQuitar.disabled = false; btnQuitar.textContent = 'Eliminar'; });
