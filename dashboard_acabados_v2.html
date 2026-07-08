@@ -3,736 +3,364 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LIVES — Digitación Acabados</title>
+<title>LIVES — Dashboard Acabados</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  :root {
-    --petroleo: #0E3B36;
-    --esmeralda: #10B981;
-    --alerta: #DC2626;
-    --monetario: #F59E0B;
-    --fondo: #F1F6F4;
-    --gris: #7C7B77;
+  :root{
+    --petroleo:#0E3B36; --petroleo-d:#092824; --esmeralda:#10B981; --alerta:#DC2626;
+    --monetario:#F59E0B; --slate:#5B7C78; --stone:#6B7280; --warm:#C9D6D3;
+    --bg:#FFFFFF; --panel:#FFFFFF; --line:#E2E8E6; --fondo:#F1F6F4;
   }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: Calibri, Arial, sans-serif;
-    background: var(--fondo);
-    color: #1a1a1a;
-  }
-  header {
-    background: var(--petroleo);
-    color: #fff;
-    padding: 16px 20px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  header .brand { font-weight: bold; letter-spacing: 2px; font-size: 18px; }
-  header .titulo { font-size: 14px; opacity: 0.9; }
-  header a.nav {
-    background: var(--esmeralda); color: #fff; text-decoration: none;
-    padding: 8px 14px; border-radius: 6px; font-size: 13px; font-weight: bold; white-space: nowrap;
-  }
-  main { max-width: 640px; margin: 0 auto; padding: 16px; }
-
-  .barra-fecha {
-    background: #fff;
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .barra-fecha label { font-size: 12px; color: var(--gris); display: block; margin-bottom: 4px; }
-  .barra-fecha input, .barra-fecha select {
-    font-size: 16px;
-    padding: 8px;
-    border: 1px solid #d8dede;
-    border-radius: 6px;
-    width: 100%;
-  }
-  .barra-fecha .campo { flex: 1; min-width: 130px; }
-  .legend-semana { font-size: 12px; color: var(--gris); margin: -8px 0 14px 2px; }
-  .item-hoy .quitar-item {
-    background: none; border: none; color: var(--alerta);
-    font-size: 12px; cursor: pointer; padding: 0 0 0 10px; text-decoration: underline;
-  }
-  .zona-peligro {
-    margin-top: 30px;
-    border-top: 1px dashed #d8dede;
-    padding-top: 14px;
-    text-align: center;
-  }
-  .zona-peligro button {
-    background: none; border: 1px solid var(--alerta); color: var(--alerta);
-    padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
-  }
-
-  .integrantes-box {
-    background: #fff;
-    border-radius: 10px;
-    padding: 14px;
-    margin-bottom: 14px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    display: none;
-  }
-  .integrantes-box.visible { display: block; }
-  .integrantes-box .label { font-size: 12px; color: var(--gris); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
-  .link-editar {
-    background: none; border: none; color: var(--esmeralda);
-    font-size: 12px; font-weight: bold; cursor: pointer; padding: 0;
-  }
-  .integrantes-box .nombres { font-size: 15px; font-weight: bold; color: var(--petroleo); }
-  .integrantes-box .colaborador-mini {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-  .integrantes-box .colaborador-mini input {
-    flex: 1;
-    font-size: 15px;
-    padding: 8px 10px;
-    border: 1px solid #d8dede;
-    border-radius: 6px;
-    text-transform: uppercase;
-  }
-  .integrantes-box .colaborador-mini input:focus {
-    outline: 2px solid var(--esmeralda);
-    border-color: var(--esmeralda);
-  }
-  .integrantes-box .nombre-mini {
-    font-size: 12px;
-    min-width: 110px;
-    max-width: 140px;
-  }
-  .integrantes-box .nombre-mini.ok { color: var(--esmeralda); font-weight: bold; }
-  .integrantes-box .nombre-mini.error { color: var(--alerta); }
-  .integrantes-box .quitar-mini {
-    background: none; border: none; color: var(--alerta);
-    font-size: 16px; cursor: pointer; padding: 4px;
-  }
-  button.agregar-colaborador {
-    width: 100%;
-    background: #fff;
-    border: 1px dashed var(--esmeralda);
-    color: var(--esmeralda);
-    padding: 8px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: bold;
-    cursor: pointer;
-  }
-
-  nav.tabs {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 14px;
-    overflow-x: auto;
-  }
-  nav.tabs button {
-    flex: 1;
-    min-width: 90px;
-    padding: 10px 6px;
-    border: none;
-    border-radius: 8px;
-    background: #fff;
-    color: var(--petroleo);
-    font-weight: bold;
-    font-size: 13px;
-    cursor: pointer;
-    border: 1px solid #d8dede;
-  }
-  nav.tabs button.activo {
-    background: var(--petroleo);
-    color: #fff;
-    border-color: var(--petroleo);
-  }
-  nav.tabs button.oculto { display: none; }
-
-  .panel {
-    background: #fff;
-    border-radius: 10px;
-    padding: 16px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    display: none;
-  }
-  .panel.activo { display: block; }
-
-  .campo-grupo { margin-bottom: 12px; }
-  .campo-grupo label { font-size: 13px; color: var(--gris); display: block; margin-bottom: 4px; }
-  .campo-grupo input, .campo-grupo select {
-    width: 100%;
-    font-size: 16px;
-    padding: 10px;
-    border: 1px solid #d8dede;
-    border-radius: 6px;
-  }
-  .campo-grupo input:focus, .campo-grupo select:focus {
-    outline: 2px solid var(--esmeralda);
-    border-color: var(--esmeralda);
-  }
-  .fila-doble { display: flex; gap: 10px; }
-  .fila-doble > div { flex: 1; }
-
-  .std-detectado {
-    font-size: 12px;
-    color: var(--gris);
-    margin-top: -8px;
-    margin-bottom: 12px;
-    min-height: 16px;
-  }
-  .std-detectado.ok { color: var(--petroleo); font-weight: bold; }
-  .std-detectado.error { color: var(--alerta); }
-
-  button.guardar {
-    width: 100%;
-    background: var(--esmeralda);
-    color: #fff;
-    border: none;
-    padding: 14px;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-top: 4px;
-  }
-  button.guardar:disabled { background: #9fd9c4; cursor: not-allowed; }
-  button.guardar:active { transform: scale(0.99); }
-
-  .aviso {
-    font-size: 13px;
-    text-align: center;
-    padding: 10px;
-    border-radius: 6px;
-    margin-top: 10px;
-    display: none;
-  }
-  .aviso.ok { display: block; background: #e6f7f1; color: var(--petroleo); }
-  .aviso.error { display: block; background: #fdecea; color: var(--alerta); }
-
-  .lista-hoy { margin-top: 18px; }
-  .lista-hoy h3 { font-size: 13px; color: var(--gris); margin-bottom: 8px; }
-  .item-hoy {
-    background: #fff;
-    border-left: 3px solid var(--esmeralda);
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin-bottom: 6px;
-    font-size: 13px;
-    display: flex;
-    justify-content: space-between;
-  }
-  .item-hoy .tipo { color: var(--gris); font-size: 11px; }
-
-  footer { text-align: center; font-size: 11px; color: var(--gris); padding: 20px; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Calibri,Arial,sans-serif;color:#1a1a1a;background:var(--fondo);line-height:1.4}
+  .header{background:var(--petroleo);color:#fff;height:72px;display:flex;align-items:center;
+    padding:0 28px;gap:20px;position:sticky;top:0;z-index:20}
+  .header svg{height:30px;width:auto}
+  .header .t{font-size:18px;font-weight:bold;letter-spacing:.5px}
+  .header .sub{margin-left:auto;font-size:13px;color:#EAF3F1;text-align:right}
+  .header button.refresh{background:var(--esmeralda);color:#fff;border:none;border-radius:6px;
+    padding:8px 14px;font-size:13px;font-weight:bold;cursor:pointer;white-space:nowrap}
+  .header button.refresh:disabled{opacity:.6;cursor:wait}
+  .wrap{max-width:1200px;margin:0 auto;padding:22px 20px 60px}
+  .hidden{display:none}
+  .loading{text-align:center;color:var(--stone);padding:60px 20px;font-size:14px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:20px 0}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+  .kpi .n{font-size:30px;font-weight:bold;color:var(--petroleo);line-height:1}
+  .kpi .l{font-size:12px;color:var(--stone);margin-top:6px;text-transform:uppercase;letter-spacing:.4px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:820px){.grid2{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+  .panel h3{font-size:15px;color:#1a1a1a;margin-bottom:14px;font-weight:bold}
+  .panel h3 span{font-weight:normal;color:var(--stone);font-size:12px}
+  canvas{max-height:300px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{background:var(--petroleo);color:#fff;font-weight:bold;text-align:left;padding:8px 10px;position:sticky;top:0}
+  td{padding:7px 10px;border-bottom:1px solid var(--line);color:#333}
+  tr:nth-child(even) td{background:#F6F9F8}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold;color:#fff}
+  .scroll{max-height:420px;overflow:auto;border-radius:8px;border:1px solid var(--line)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+  .tab{padding:7px 16px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--stone);
+    cursor:pointer;font-size:13px;font-weight:bold}
+  .tab.on{background:var(--petroleo);color:#fff;border-color:var(--petroleo)}
+  .eff{font-weight:bold}
+  .footer{color:var(--stone);font-size:12px;text-align:center;margin-top:26px}
+  .err{background:#fdecea;border:1px solid var(--alerta);color:#a33;padding:12px 16px;border-radius:8px;margin-top:14px}
+  .legend{font-size:11px;color:var(--stone);margin-top:6px}
+  @media print{.header .refresh{display:none}.header{position:static}body{background:#fff}}
 </style>
 </head>
 <body>
+<div class="header">
+  <svg viewBox="256 892 1070 285" fill="#FFFFFF" aria-label="LIVES"><path d="M922 969c.004-14-.032-27.5.03-41 .027-6.13.84-6.97 6.97-6.97 45.33-.03 90.66-.03 135.99 0 6.13 0 6.87.84 7 6.97.23 10.95.19 11-11 11-33.16 0-66.33-.01-99.49.01-8.05 0-8.49.44-8.49 8.49-.02 22.16-.02 44.33 0 66.5.01 7.4.58 7.98 7.99 7.98 28.16.03 56.33.01 84.49.02 9.08 0 11.87 3.55 9.07 12.42-.51 1.6-3.62 3.32-5.58 3.38-11.16.33-22.33.18-33.49.18-18.33.01-36.66-.02-54.99.02-6.76.02-7.47.72-7.48 7.5-.03 26.66-.03 53.33 0 80 .01 6.77.72 7.48 7.49 7.48 34.16.03 68.33-.04 102.5.13 2.84.01 7.88 1.2 8.11 2.51.84 4.74.34 9.81-.37 14.65-.12.83-3.74 1.6-5.76 1.63-13 .15-26 .08-39 .08-31.83 0-63.66.01-95.49-.01-8.04 0-8.48-.44-8.48-8.51-.01-58-.01-116-.01-174z M1256 930c12.57 7.63 21.51 17.83 26.06 31.56 2.17 6.55 1.2 7.44-5.53 7.9-9.46.64-16.92.44-19.76-11.86-2.6-11.25-12.65-17.13-23.33-20.73-19.92-6.7-39.57-6.63-58.71 2.96-11.27 5.65-18.9 13.88-20.09 27.08-1.29 14.42 5.74 23.95 17.34 31.26 16.96 10.69 35.87 16.72 54.55 23.31 15.18 5.35 29.37 12.36 42.37 22 36.74 27.25 28.82 82.23-9.61 102.08-13.9 7.18-28.77 10.25-44.26 10.81-16.08.58-31.95-.54-47.3-5.97-18.56-6.56-34.1-16.8-42.57-35.32-2.18-4.77-3.2-10.13-4.29-15.31-.83-3.96.88-6.5 5.36-6.35.17.01.33-.02.5-.01 4.82.15 10.64-1.28 14.14.94 3.03 1.92 3.6 7.94 4.96 12.25 4.56 14.38 14.13 24.32 28.09 29.14 24.19 8.36 48.38 8.36 71.88-2.97 8.78-4.23 14.62-11.27 16.57-20.75 4.12-19.97-.3-34.46-18.07-46.89-13.02-9.11-27.82-14.15-42.38-19.89-14.07-5.55-28.26-11-41.69-17.88-11.46-5.88-21.66-14.24-26.59-26.81-10.28-26.21-3.17-59.82 29.22-74.28 31.18-13.91 62.47-12.71 93.15 3.73z M690 964c16.5 39.55 32.83 78.74 49.18 117.94 3.7 8.86 7.43 17.7 11.74 27.95 1.59-2.89 2.64-4.43 3.33-6.12 17.29-42.59 34.53-85.2 51.8-127.8 6.51-16.05 13.28-32 19.49-48.16 2.09-5.43 5.14-7.35 10.82-7.17 10.29.33 10.23.03 6.41 9.44-17.09 42.13-34.13 84.29-51.21 126.42-12.01 29.63-24.15 59.22-36.02 88.91-1.81 4.53-4.25 6.51-9.22 6.41-16.39-.33-13.54 1.44-19.49-12.76-29.67-70.8-59.37-141.6-89.06-212.39-2.09-4.99-1.62-5.84 3.81-5.89 8.33-.08 16.66.08 24.99-.05 3.85-.06 6.16 1.49 7.62 5.08 5.13 12.66 10.44 25.24 15.84 38.18z M276 1003c0-25 .006-49.5.033-73.99.008-7.41.586-7.96 7.988-8 5.83-.03 11.66.06 17.5.02 3.75-.03 5.53 1.74 5.46 5.48-.04 2-0 4-.001 6 .003 63.66 0 127.32.006 190.98.001 9.39.118 9.5 9.498 9.5 33.66.01 67.33 0 100.99.01 8.06 0 8.47.45 8.51 8.49.005 1 .009 2-.005 3-.093 6.76-.725 7.47-7.502 7.48-45 .02-90 .02-135 0-6.76-.01-7.47-.72-7.48-7.5-.027-47-.017-94-.019-141z M546 979c0 55-.004 109.5.006 164 .001 8.72-.286 8.98-8.994 9-5.5.01-11 .07-16.498.03-3.747.03-5.553-1.73-5.468-5.48.03-1.33-.034-2.66-.034-4-.002-70.66-.005-141.32 0-212 .001-9.39.116-9.49 9.493-9.5 5 0 10 .16 14.99-.02 4.7-.17 6.57 1.83 6.53 6.53-.12 17-.04 34-.02 51z"/></svg>
+  <div class="t">DASHBOARD ACABADOS</div>
+  <div class="sub" id="sub">Eficiencias · Incentivos<br>Cargando datos en vivo del Sheet...</div>
+  <a href="formulario_acabados.html" style="background:#fff;color:#0E3B36;text-decoration:none;
+     padding:8px 14px;border-radius:6px;font-size:13px;font-weight:bold;white-space:nowrap">✎ Digitar datos</a>
+  <button class="refresh" id="btnCerrarSemana" style="background:#DC2626">🔒 Cerrar semana</button>
+  <button class="refresh" id="btnRefresh">↻ Actualizar</button>
+</div>
 
-<header>
-  <div class="brand">LIVES</div>
-  <div class="titulo">Digitación diaria — Acabados</div>
-  <a href="dashboard_acabados_v2.html" class="nav">📊 Ver dashboard</a>
-</header>
+<div class="wrap">
+  <div id="loadingbox" class="loading">Cargando datos del Google Sheet...</div>
+  <div id="errbox"></div>
 
-<main>
+  <div id="content" class="hidden">
+    <div class="kpis" id="kpis"></div>
 
-  <div class="barra-fecha">
-    <div class="campo">
-      <label for="fecha">Fecha</label>
-      <input type="date" id="fecha">
-    </div>
-    <div class="campo" style="max-width:110px">
-      <label for="semana">Semana N°</label>
-      <input type="number" id="semana" min="1" max="53" placeholder="Ej: 27">
-    </div>
-    <div class="campo">
-      <label for="area">Área</label>
-      <select id="area">
-        <option value="PLANCHA">PLANCHA</option>
-        <option value="VAPOR">VAPOR</option>
-        <option value="DOBLADO">DOBLADO</option>
-        <option value="ENCAJADO">ENCAJADO</option>
-      </select>
-    </div>
-    <div class="campo">
-      <label for="modulo">Módulo</label>
-      <select id="modulo"><option value="">Cargando...</option></select>
-    </div>
-  </div>
-  <div class="legend-semana" id="legend-semana"></div>
-
-  <div class="integrantes-box visible" id="integrantes-box">
-    <div class="label">Integrantes de este módulo <button type="button" id="btn-editar-integrantes" class="link-editar">✎ Cambiar integrantes</button></div>
-    <div class="nombres" id="integrantes-nombres"></div>
-    <div id="colaboradores-modulo" style="display:none"></div>
-    <button type="button" class="agregar-colaborador" id="btn-agregar-colaborador" style="display:none">+ Agregar otro colaborador</button>
-    <button type="button" id="btn-guardar-integrantes" class="agregar-colaborador" style="display:none">Guardar esta asignación</button>
-  </div>
-
-  <nav class="tabs">
-    <button data-tab="produccion" class="activo">Producción</button>
-    <button data-tab="sistema" class="oculto">Sistema</button>
-    <button data-tab="rechazo" class="oculto">Rechazo</button>
-  </nav>
-
-  <!-- PRODUCCIÓN POR MÓDULO (unifica cantidad + improductivos, total del módulo) -->
-  <section class="panel activo" id="panel-produccion">
-    <div class="campo-grupo">
-      <label id="label-clave">Estilo (número de prenda)</label>
-      <input type="text" id="p-clave" placeholder="Ej: 25175" inputmode="numeric">
-    </div>
-    <div class="campo-grupo" id="subcategoria-wrap" style="display:none">
-      <label>Subcategoría (solo PLANCHA)</label>
-      <select id="p-subcategoria">
-        <option value="">-- Selecciona --</option>
-        <option value="R">R — Retoques de escote</option>
-        <option value="A">A — Apariencia escote, faldón</option>
-        <option value="B">B — Apariencia escote, faldón, sisas, mangas, ancho hombros</option>
-        <option value="C">C — Apariencia y medida ancho escote, bajo sisa, faldón</option>
-      </select>
-    </div>
-    <div class="std-detectado" id="p-std-detectado"></div>
-    <div class="fila-doble">
-      <div class="campo-grupo">
-        <label>Cantidad (total del módulo)</label>
-        <input type="number" id="p-cant" min="0" inputmode="numeric">
+    <div class="grid2">
+      <div class="panel">
+        <h3>Eficiencia semanal por área <span>ponderada vs promedio simple</span></h3>
+        <canvas id="chEff"></canvas>
+        <div class="legend"><b>Ponderada</b> (Σ min prod / Σ min disponibles) es la real de la línea. <b>Simple</b> es el promedio de operarias, como el reporte anterior; infla cuando hay operarios con muchas horas y poca producción.</div>
       </div>
-      <div class="campo-grupo">
-        <label>STD manual (solo si difiere del detectado)</label>
-        <input type="number" id="p-std" min="0" step="0.01" inputmode="decimal">
+      <div class="panel">
+        <h3>Incentivo pagado por área <span>soles</span></h3>
+        <canvas id="chInc"></canvas>
       </div>
     </div>
-    <div class="fila-doble">
-      <div class="campo-grupo">
-        <label>Improductivo (min, total del módulo)</label>
-        <input type="number" id="p-improd" min="0" inputmode="numeric">
+
+    <div class="panel">
+      <h3>Eficiencia diaria por área <span>promedio de operarias que trabajaron ese día</span></h3>
+      <canvas id="chDay" style="max-height:320px"></canvas>
+    </div>
+
+    <div class="panel">
+      <h3>Detalle por trabajador</h3>
+      <div class="tabs" id="tabs"></div>
+      <div class="scroll">
+        <table id="tbl"><thead></thead><tbody></tbody></table>
       </div>
-      <div class="campo-grupo">
-        <label>Apoyo módulo (min, opcional)</label>
-        <input type="number" id="p-apoyo" min="0" inputmode="numeric">
-      </div>
+      <div class="legend">La celda de eficiencia se pinta verde ≥85%, ámbar 70–84%, rosa &lt;70%. El incentivo diario ya considera la curva y el básico de cada trabajador. La columna % Rechazo Audit. solo aplica a DOBLADO (viene de AUDITORIA DOB). Desde que la digitación pasó a ser por módulo (no por persona), las columnas de % Efic diario y Prendas de esta tabla pueden salir en 0 para trabajadores de módulos con 2+ integrantes — el incentivo en soles sigue siendo exacto. Para ver la producción real, usa la pestaña <b>POR MÓDULO</b>, que calcula la eficiencia ponderada real del módulo (no un promedio) directo desde GRUPOS.</div>
     </div>
-    <button class="guardar" data-tipo="produccionModulo">Guardar producción del módulo</button>
-    <div class="aviso" id="aviso-produccionModulo"></div>
-  </section>
 
-  <!-- SISTEMA DOB -->
-  <section class="panel" id="panel-sistema">
-    <div class="campo-grupo">
-      <label>Estilo</label>
-      <input type="text" id="s-estilo" placeholder="Ej: 25175" inputmode="numeric">
-    </div>
-    <div class="campo-grupo">
-      <label>Cantidad</label>
-      <input type="number" id="s-cant" min="0" inputmode="numeric">
-    </div>
-    <button class="guardar" data-tipo="sistema">Agregar producción sistema</button>
-    <div class="aviso" id="aviso-sistema"></div>
-  </section>
-
-  <!-- RECHAZO -->
-  <section class="panel" id="panel-rechazo">
-    <div class="campo-grupo">
-      <label>Prendas rechazadas</label>
-      <input type="number" id="r-cant" min="0" inputmode="numeric">
-    </div>
-    <button class="guardar" data-tipo="rechazo">Agregar rechazo</button>
-    <div class="aviso" id="aviso-rechazo"></div>
-  </section>
-
-  <div class="lista-hoy">
-    <h3>Agregado en esta sesión (<span id="contador-hoy">0</span>)</h3>
-    <div id="lista-items"></div>
+    <div class="footer">Confidencial — Uso Interno · LIVES · Datos en vivo desde Google Sheets</div>
   </div>
-
-  <div class="zona-peligro">
-    <button type="button" id="btn-limpiar-todo">🧹 Borrar datos de prueba y empezar de cero</button>
-  </div>
-
-</main>
-
-<footer>Confidencial — Uso Interno · LIVES</footer>
+</div>
 
 <script>
-  // ⚠️ Pegar aquí la URL del Web App de Apps Script tras desplegarlo
-  const URL_APPS_SCRIPT = 'https://script.google.com/macros/s/AKfycbx_RVCdk3GSyPjTRCxRDsIcSELk1bAMyDK2khgSZGPoPVrTwxYHFXRd_TspcnpbabvNFg/exec';
+// ⚠️ Misma URL de Web App que usa formulario_acabados.html
+const URL_APPS_SCRIPT = 'https://script.google.com/macros/s/AKfycbx_RVCdk3GSyPjTRCxRDsIcSELk1bAMyDK2khgSZGPoPVrTwxYHFXRd_TspcnpbabvNFg/exec';
 
-  let trabajadores = {};
-  let modulosPorArea = {};  // { PLANCHA: [{modulo:'PL-1', integrantes:[...]}], ... }
-  let stdTabla = [];
-  let contador = 0;
+const PETROLEO='#0E3B36',ESMERALDA='#10B981',MONETARIO='#F59E0B',SLATE='#5B7C78',ALERTA='#DC2626',WARM='#C9D6D3',STONE='#6B7280';
+const SERIES=[PETROLEO,ESMERALDA,MONETARIO,SLATE];
+const AREAS=['PLANCHA','VAPOR','DOBLADO','ENCAJADO'];
+const DAYS=['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'];
+Chart.defaults.font.family='Calibri, Arial, sans-serif';
+Chart.defaults.color=STONE;
+let charts={};
 
-  const hoy = new Date();
-  document.getElementById('fecha').value = hoy.toISOString().slice(0,10);
-  const $=id=>document.getElementById(id);
+const $=id=>document.getElementById(id);
+const num=v=>typeof v==='number'?v:(v==null||v===''?0:(parseFloat(v)||0));
 
-  // --- Cargar catálogo (trabajadores, módulos por área, tabla STD) ---
-  function cargarCatalogo(reintento) {
-    fetch(URL_APPS_SCRIPT + '?accion=catalogo')
-      .then(r => r.json())
-      .then(data => {
-        trabajadores = data.trabajadores || {};
-        modulosPorArea = data.modulos || {};
-        stdTabla = data.std || [];
-        if (data.semana && !$('semana').value) {
-          $('semana').value = data.semana;
-          $('legend-semana').textContent = `Semana actual en el Sheet: ${data.semana}. Cámbiala aquí solo si empieza una semana nueva.`;
-        }
-        poblarModulos();
-        console.log('Catálogo cargado OK:', Object.keys(trabajadores).length, 'trabajadores,', stdTabla.length, 'filas STD');
-      })
-      .catch(err => {
-        console.error('ERROR REAL cargando catálogo:', err);
-        if (!reintento) {
-          // Primer intento falló -- puede ser el "cold start" de Apps Script
-          // (el servidor tarda en despertar tras estar inactivo). Reintenta
-          // una vez solo, automático, antes de avisar que algo está mal de verdad.
-          $('modulo').innerHTML = '<option value="">Conectando, un momento...</option>';
-          setTimeout(() => cargarCatalogo(true), 4000);
-        } else {
-          $('modulo').innerHTML = '<option value="">Error cargando módulos — recarga la página</option>';
-        }
-      });
-  }
-  cargarCatalogo(false);
+function err(msg){$('errbox').innerHTML='<div class="err">'+msg+'</div>';}
+function clearErr(){$('errbox').innerHTML='';}
 
-  function poblarModulos() {
-    const area = $('area').value;
-    const lista = modulosPorArea[area] || [];
-    $('modulo').innerHTML = lista.map(m => `<option value="${m.modulo}">${m.modulo}</option>`).join('');
-    salirModoEdicion();
-    mostrarIntegrantesAutomaticos();
-  }
+$('btnRefresh').addEventListener('click', cargar);
 
-  function mostrarIntegrantesAutomaticos() {
-    const area = $('area').value;
-    const modSel = $('modulo').value;
-    const lista = modulosPorArea[area] || [];
-    const info = lista.find(m => m.modulo === modSel);
-    const nombresDiv = $('integrantes-nombres');
-    if (!info || info.integrantes.length === 0) {
-      nombresDiv.textContent = 'Nadie asignado todavía a este módulo — usa "Cambiar integrantes".';
-      nombresDiv.className = 'nombres';
-      nombresDiv.style.color = 'var(--alerta)';
-    } else {
-      nombresDiv.textContent = info.integrantes.join(' · ');
-      nombresDiv.className = 'nombres';
-      nombresDiv.style.color = '';
-    }
-  }
-
-  let modoEdicionIntegrantes = false;
-  function entrarModoEdicion() {
-    modoEdicionIntegrantes = true;
-    $('integrantes-nombres').style.display = 'none';
-    $('colaboradores-modulo').style.display = 'block';
-    $('btn-agregar-colaborador').style.display = 'block';
-    $('btn-guardar-integrantes').style.display = 'block';
-    $('btn-editar-integrantes').textContent = 'Cancelar';
-    reiniciarColaboradoresMini();
-  }
-  function salirModoEdicion() {
-    modoEdicionIntegrantes = false;
-    $('integrantes-nombres').style.display = 'block';
-    $('colaboradores-modulo').style.display = 'none';
-    $('btn-agregar-colaborador').style.display = 'none';
-    $('btn-guardar-integrantes').style.display = 'none';
-    $('btn-editar-integrantes').textContent = '✎ Cambiar integrantes';
-  }
-  $('btn-editar-integrantes').addEventListener('click', () => {
-    if (modoEdicionIntegrantes) { salirModoEdicion(); } else { entrarModoEdicion(); }
-  });
-
-  $('btn-guardar-integrantes').addEventListener('click', () => {
-    const modulo = $('modulo').value;
-    const area = $('area').value;
-    const integrantes = obtenerCodigosColaboradores();
-    if (!modulo) { alert('Selecciona un módulo primero.'); return; }
-    if (integrantes.length === 0) { alert('Escribe el código de al menos un colaborador.'); return; }
-    const btn = $('btn-guardar-integrantes');
-    btn.disabled = true; btn.textContent = 'Guardando...';
-    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'asignarModulo', modulo, area, integrantes }) })
-      .then(r => r.json())
-      .then(res => {
-        if (res.ok) {
-          // Actualiza la caché local para que se vea el cambio al toque, sin esperar el cache del servidor
-          const lista = modulosPorArea[area] || [];
-          const info = lista.find(m => m.modulo === modulo);
-          if (info) info.integrantes = integrantes.map(c => (trabajadores[c] ? trabajadores[c].nombre : c));
-          salirModoEdicion();
-          mostrarIntegrantesAutomaticos();
-          if (res.aviso) alert(res.aviso);
-        } else {
-          alert(res.error || 'No se pudo guardar la asignación.');
-        }
-      })
-      .catch(() => alert('No se pudo conectar. Intenta de nuevo.'))
-      .finally(() => { btn.disabled = false; btn.textContent = 'Guardar esta asignación'; });
-  });
-
-  // --- Bloques editables de colaborador dentro del módulo (código -> nombre detectado) ---
-  function crearBloqueColaboradorMini(indice) {
-    const div = document.createElement('div');
-    div.className = 'colaborador-mini';
-    div.dataset.indice = indice;
-    div.innerHTML = `
-      <input type="text" class="cod-colaborador" placeholder="Ej: O-9145" autocomplete="off">
-      <span class="nombre-mini"></span>
-      ${indice > 0 ? '<button type="button" class="quitar-mini" title="Quitar">✕</button>' : ''}
-    `;
-    const input = div.querySelector('.cod-colaborador');
-    const nombreSpan = div.querySelector('.nombre-mini');
-    input.addEventListener('input', () => {
-      const cod = input.value.trim().toUpperCase();
-      input.value = cod;
-      if (!cod) { nombreSpan.textContent = ''; nombreSpan.className = 'nombre-mini'; return; }
-      const t = trabajadores[cod];
-      if (t) { nombreSpan.textContent = t.nombre; nombreSpan.className = 'nombre-mini ok'; }
-      else { nombreSpan.textContent = '¿No existe?'; nombreSpan.className = 'nombre-mini error'; }
+$('btnCerrarSemana').addEventListener('click', () => {
+  const codigo = prompt('Código de administrador:');
+  if (codigo !== 'LIVES2026') { if (codigo !== null) alert('Código incorrecto.'); return; }
+  const ok = confirm(
+    '¿Cerrar esta semana?\n\n' +
+    'Esto archiva el resumen actual a HISTORIAL y LIBERA las asignaciones de ' +
+    'módulo (parejas/módulos) de TRABAJADORES — la semana nueva va a arrancar ' +
+    'sin integrantes asignados, habrá que volver a elegirlos desde el formulario.\n\n' +
+    'Asegúrate de haber revisado el resumen de esta semana antes de continuar. Esta acción no se puede deshacer.'
+  );
+  if (!ok) return;
+  const btn = $('btnCerrarSemana');
+  btn.disabled = true;
+  btn.textContent = 'Cerrando...';
+  fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'cerrarSemana', codigoAdmin: codigo }) })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) {
+        alert(res.mensaje + '\n\nRecuerda: todavía debes cambiar la fecha de la semana en PARAMETROS y pegar el HO nuevo antes de digitar la semana nueva.');
+      } else {
+        alert('No se pudo cerrar la semana: ' + (res.error || 'error desconocido'));
+      }
+    })
+    .catch(() => alert('No se pudo conectar. Revisa tu internet e intenta de nuevo antes de reintentar (para no duplicar el archivo en HISTORIAL).'))
+    .finally(() => {
+      btn.disabled = false;
+      btn.textContent = '🔒 Cerrar semana';
     });
-    const quitar = div.querySelector('.quitar-mini');
-    if (quitar) quitar.addEventListener('click', () => div.remove());
-    return div;
-  }
-  function agregarColaboradorMini() {
-    const contenedor = $('colaboradores-modulo');
-    const indice = contenedor.children.length;
-    contenedor.appendChild(crearBloqueColaboradorMini(indice));
-  }
-  function reiniciarColaboradoresMini() {
-    $('colaboradores-modulo').innerHTML = '';
-    agregarColaboradorMini();
-    agregarColaboradorMini();
-  }
-  $('btn-agregar-colaborador').addEventListener('click', agregarColaboradorMini);
-  function obtenerCodigosColaboradores() {
-    return Array.from(document.querySelectorAll('.cod-colaborador'))
-      .map(i => i.value.trim().toUpperCase())
-      .filter(v => v);
-  }
+});
+cargar();
 
-  $('area').addEventListener('change', () => { poblarModulos(); actualizarPestanasPorArea(); });
-  $('modulo').addEventListener('change', () => { salirModoEdicion(); mostrarIntegrantesAutomaticos(); });
-  reiniciarColaboradoresMini();
-  const tabs = document.querySelectorAll('nav.tabs button');
-  tabs.forEach(btn => {
-    btn.addEventListener('click', () => {
-      tabs.forEach(b => b.classList.remove('activo'));
-      btn.classList.add('activo');
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('activo'));
-      document.getElementById('panel-' + btn.dataset.tab).classList.add('activo');
+function cargar(){
+  clearErr();
+  $('btnRefresh').disabled = true;
+  $('btnRefresh').textContent = 'Actualizando...';
+  $('loadingbox').classList.remove('hidden');
+  fetch(URL_APPS_SCRIPT + '?accion=dashboard')
+    .then(r => r.json())
+    .then(data => {
+      $('loadingbox').classList.add('hidden');
+      render(data);
+    })
+    .catch(e => {
+      $('loadingbox').classList.add('hidden');
+      console.error('Error cargando dashboard:', e);
+      err('No se pudo conectar con el Sheet. Revisa tu internet o la URL_APPS_SCRIPT. Detalle: ' + e.message);
+    })
+    .finally(() => {
+      $('btnRefresh').disabled = false;
+      $('btnRefresh').textContent = '↻ Actualizar';
     });
+}
+
+function render(data){
+  const ef=data.eficiencias, inc=data.incentivos, gr=data.grupos, par=data.parametros;
+  if(!ef||!inc){err('El Sheet no devolvió EFICIENCIAS o INCENTIVOS. Revisa el backend.');return;}
+
+  // ---- % RECHAZO, Pdas Prod SEM y eficiencia ponderada real por módulo (desde GRUPOS)
+  const rechazoPorGrupo={};
+  const pdasPorGrupo={};
+  const efPondPorGrupo={};
+  const MP_COLS=[3,12,21,30,39,48,57], MA_COLS=[4,13,22,31,40,49,58], IM_COLS=[5,14,23,32,41,50,59];
+  if(gr){
+    for(let i=3;i<gr.length;i++){
+      const grupo=gr[i][0], area=gr[i][1];
+      if(!grupo) continue;
+      pdasPorGrupo[grupo]=num(gr[i][67]); // BP, columna 68 (índice 67)
+      if(area==='DOBLADO') rechazoPorGrupo[grupo]=num(gr[i][69]); // BR, columna 70 (índice 69)
+      let mp=0,ma=0,im=0;
+      MP_COLS.forEach(c=>mp+=num(gr[i][c]));
+      MA_COLS.forEach(c=>ma+=num(gr[i][c]));
+      IM_COLS.forEach(c=>im+=num(gr[i][c]));
+      efPondPorGrupo[grupo]=(ma-im)>0?mp/(ma-im):0;
+    }
+  }
+
+  // ---- EFICIENCIAS: encabezados en fila índice 2 (fila 3 Excel), datos desde índice 3
+  const TOT=4+7*4; // 32
+  const COL={pdas:TOT, mprod:TOT+1, masist:TOT+2, improd:TOT+3, efsem:TOT+4, efpond:TOT+5};
+  const rows=[];
+  for(let i=3;i<ef.length;i++){
+    const cod=ef[i][0]; if(!cod) continue;
+    const area=ef[i][2]||'';
+    if(!AREAS.includes(area)) continue;
+    const daily=[]; for(let d=0;d<7;d++) daily.push(num(ef[i][4+d*4+3]));
+    const grupo=ef[i][3]||'';
+    rows.push({cod,oper:ef[i][1]||'',area,grupo,
+      pdas:num(ef[i][COL.pdas]),efsem:num(ef[i][COL.efsem]),
+      mprod:num(ef[i][COL.mprod]),masist:num(ef[i][COL.masist]),improd:num(ef[i][COL.improd]),daily,
+      rechazo: area==='DOBLADO' ? (rechazoPorGrupo[grupo]||0) : null});
+  }
+  // ---- INCENTIVOS: A cod(0)...F..L diarios(5..11), M total(12)
+  const incMap={};
+  for(let i=3;i<inc.length;i++){
+    const cod=inc[i][0]; if(!cod||typeof cod!=='string'||!cod.startsWith('O-'))continue;
+    const daily=[]; for(let d=0;d<7;d++) daily.push(num(inc[i][5+d]));
+    incMap[cod]={total:num(inc[i][12]),daily,basico:num(inc[i][4])};
+  }
+  rows.forEach(r=>{r.inc=incMap[r.cod]?incMap[r.cod].total:0; r.incDaily=incMap[r.cod]?incMap[r.cod].daily:[0,0,0,0,0,0,0];});
+
+  // ---- semana / fecha desde PARAMETROS
+  let semTxt='';
+  if(par){ let semN=null;
+    for(let i=0;i<Math.min(par.length,8);i++){ const row=par[i]||[];
+      const idx=row.findIndex(c=>typeof c==='string'&&/Semana/i.test(c));
+      if(idx>=0){ for(let j=idx;j<row.length;j++){ if(typeof row[j]==='number'){semN=row[j];break;} } }
+      if(semN)break; }
+    if(semN) semTxt='Semana actual: '+semN; }
+  const ahora=new Date();
+  $('sub').innerHTML=(semTxt||'Semana actual')+'<br>Actualizado '+ahora.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+
+  // ---- métricas por área
+  const byArea={};
+  AREAS.forEach(a=>byArea[a]={mprod:0,masist:0,improd:0,inc:0,pdas:0,n:0,daily:Array(7).fill(0),dcount:Array(7).fill(0)});
+  rows.forEach(r=>{
+    const b=byArea[r.area]; b.mprod+=r.mprod;b.masist+=r.masist;b.improd+=r.improd;b.inc+=r.inc;b.pdas+=r.pdas;b.n++;
+    r.daily.forEach((v,d)=>{ if(v>0){b.daily[d]+=v;b.dcount[d]++;} });
   });
+  const effPond=a=>{const b=byArea[a];const den=b.masist-b.improd;return den>0?b.mprod/den:0;};
+  const effDayAvg=(a,d)=>{const b=byArea[a];return b.dcount[d]>0?b.daily[d]/b.dcount[d]:0;};
+  const effSimple=a=>{const rs=rows.filter(r=>r.area===a&&r.efsem>0);return rs.length?rs.reduce((s,r)=>s+r.efsem,0)/rs.length:0;};
 
-  function actualizarPestanasPorArea() {
-    const esDoblado = $('area').value === 'DOBLADO';
-    const esPlancha = $('area').value === 'PLANCHA';
-    document.querySelector('[data-tab="sistema"]').classList.toggle('oculto', !esDoblado);
-    document.querySelector('[data-tab="rechazo"]').classList.toggle('oculto', !esDoblado);
-    $('subcategoria-wrap').style.display = esPlancha ? 'block' : 'none';
-    $('label-clave').textContent = esPlancha ? 'Estilo (número de prenda)' : 'Estilo (clave / categoría / cliente)';
-    actualizarStd();
-  }
+  // ---- KPIs
+  let totInc=0,totPdas=0,totMp=0,totMa=0,totImp=0,nOper=0;
+  AREAS.forEach(a=>{const b=byArea[a];totInc+=b.inc;totPdas+=b.pdas;totMp+=b.mprod;totMa+=b.masist;totImp+=b.improd;nOper+=b.n;});
+  const effGlobal=(totMa-totImp)>0?totMp/(totMa-totImp):0;
+  const kpis=[
+    {n:(effGlobal*100).toFixed(0)+'%',l:'Eficiencia acabados (ponderada)'},
+    {n:'S/ '+totInc.toLocaleString('es-PE',{minimumFractionDigits:0,maximumFractionDigits:0}),l:'Incentivo total semana'},
+    {n:totPdas.toLocaleString('es-PE'),l:'Prendas producidas'},
+    {n:nOper,l:'Trabajadores con actividad'},
+  ];
+  $('kpis').innerHTML=kpis.map(k=>`<div class="kpi"><div class="n">${k.n}</div><div class="l">${k.l}</div></div>`).join('');
 
-  // --- Detección de STD por clave/estilo, replica la lógica de REGISTRO!J / PRODUCCION MODULO!H ---
-  function buscarPorEstiloColF(clave) {
-    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][5];
-    return null;
-  }
-  function buscarPorEstiloColD(clave) {
-    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][3];
-    return null;
-  }
-  function buscarClienteDob(clave) {
-    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][8]) === String(clave)) return stdTabla[i][11];
-    return null;
-  }
-  function buscarNivelPorEstilo(clave) {
-    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][13]) === String(clave)) return stdTabla[i][14];
-    return null;
-  }
-  function buscarStdPorNivel(nivel) {
-    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][16]) === String(nivel)) return stdTabla[i][17];
-    return null;
-  }
-  function detectarStd(area, clave, subcategoria) {
-    if (area === 'PLANCHA') {
-      if (!subcategoria) return null;
-      return buscarPorEstiloColF(subcategoria.toUpperCase());
-    }
-    if (!clave) return null;
-    if (area === 'VAPOR') return buscarPorEstiloColD(clave);
-    if (area === 'DOBLADO') { const v = buscarPorEstiloColF(clave); return v != null ? v : buscarClienteDob(clave); }
-    if (area === 'ENCAJADO') { const nivel = buscarNivelPorEstilo(clave); return nivel == null ? null : buscarStdPorNivel(nivel); }
-    return null;
-  }
-  function actualizarStd() {
-    const div = $('p-std-detectado');
-    const area = $('area').value;
-    const clave = $('p-clave').value.trim();
-    const subcategoria = $('p-subcategoria').value;
-    if (area === 'PLANCHA') {
-      if (!subcategoria) { div.textContent = ''; div.className = 'std-detectado'; return; }
-    } else if (!clave) { div.textContent = ''; div.className = 'std-detectado'; return; }
-    const std = detectarStd(area, clave, subcategoria);
-    if (std != null && std !== '') { div.textContent = `STD detectado: ${std}`; div.className = 'std-detectado ok'; }
-    else if (area === 'PLANCHA') { div.textContent = 'No se encontró STD para esa subcategoría.'; div.className = 'std-detectado error'; }
-    else { div.textContent = 'No se encontró STD para esa clave — usa STD manual o revisa la clave.'; div.className = 'std-detectado error'; }
-  }
-  $('p-clave').addEventListener('input', actualizarStd);
-  $('p-subcategoria').addEventListener('change', actualizarStd);
+  // ---- Chart eficiencia por área (ponderada vs simple)
+  const effPondV=AREAS.map(a=>+(effPond(a)*100).toFixed(1));
+  const effSimpV=AREAS.map(a=>+(effSimple(a)*100).toFixed(1));
+  mkChart('chEff','bar',{labels:AREAS,datasets:[
+      {label:'Ponderada',data:effPondV,backgroundColor:PETROLEO,borderRadius:4},
+      {label:'Promedio simple',data:effSimpV,backgroundColor:WARM,borderRadius:4}]},
+    {scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{color:'#eee'}},x:{grid:{display:false}}},
+     plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+'%'}}}});
 
-  // --- Guardar ---
-  document.querySelectorAll('button.guardar').forEach(btn => {
-    btn.addEventListener('click', () => guardar(btn.dataset.tipo, btn));
+  // ---- Chart incentivo por área
+  const incVals=AREAS.map(a=>+byArea[a].inc.toFixed(2));
+  mkChart('chInc','doughnut',{labels:AREAS,datasets:[{data:incVals,backgroundColor:SERIES,borderColor:'#fff',borderWidth:2}]},
+    {plugins:{legend:{position:'right'},tooltip:{callbacks:{label:c=>c.label+': S/ '+c.parsed.toLocaleString('es-PE',{minimumFractionDigits:2})}}}});
+
+  // ---- Chart eficiencia diaria
+  mkChart('chDay','line',{labels:DAYS,datasets:AREAS.map((a,i)=>({
+      label:a,data:DAYS.map((_,d)=>+(effDayAvg(a,d)*100).toFixed(1)),
+      borderColor:SERIES[i],backgroundColor:SERIES[i],tension:.3,pointRadius:3,fill:false}))},
+    {scales:{y:{beginAtZero:true,ticks:{callback:v=>v+'%'},grid:{color:'#eee'}},x:{grid:{display:false}}},
+     plugins:{legend:{position:'bottom'},tooltip:{callbacks:{label:c=>c.dataset.label+': '+c.parsed.y+'%'}}}});
+
+  // ---- Tabla por trabajador con tabs
+  window._rows=rows;
+  window._pdasPorGrupo=pdasPorGrupo;
+  window._efPondPorGrupo=efPondPorGrupo;
+  const tabs=['TODAS',...AREAS,'POR MÓDULO'];
+  $('tabs').innerHTML=tabs.map((t,i)=>`<div class="tab ${i===0?'on':''}" data-a="${t}">${t}</div>`).join('');
+  document.querySelectorAll('.tab').forEach(tb=>tb.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    tb.classList.add('on');
+    if (tb.dataset.a === 'POR MÓDULO') fillTablaPorModulo(); else fillTable(tb.dataset.a);
+  }));
+  fillTable('TODAS');
+
+  $('content').classList.remove('hidden');
+}
+
+function effColor(e){ if(e>=.85)return {bg:'#E3F2EE',fg:'#0E3B36'}; if(e>=.70)return {bg:'#FEF3DD',fg:'#8a6d2e'}; return {bg:'#FBE6E6',fg:'#a33'}; }
+
+function fillTable(area){
+  const rows=window._rows.filter(r=>area==='TODAS'||r.area===area)
+    .sort((a,b)=>b.efsem-a.efsem);
+  const head=['Trabajador','Área','Grupo',...DAYS,'% Efic Sem','Prendas','Incent. S/','% Rechazo Audit.'];
+  $('tbl').querySelector('thead').innerHTML='<tr>'+head.map((h,i)=>
+    `<th class="${i>=3?'num':''}">${h}</th>`).join('')+'</tr>';
+  $('tbl').querySelector('tbody').innerHTML=rows.map(r=>{
+    const days=r.daily.map(d=>{
+      if(d<=0)return '<td class="num" style="color:#bbb">—</td>';
+      const c=effColor(d);
+      return `<td class="num" style="background:${c.bg};color:${c.fg};font-weight:bold">${(d*100).toFixed(0)}%</td>`;
+    }).join('');
+    const cs=effColor(r.efsem);
+    const rechazoCell = r.rechazo===null
+      ? '<td class="num" style="color:#bbb">—</td>'
+      : `<td class="num" style="color:${r.rechazo>0.5?'#a33':'#333'};font-weight:${r.rechazo>0.5?'bold':'normal'}">${(r.rechazo*100).toFixed(0)}%</td>`;
+    return `<tr>
+      <td>${r.oper||r.cod}</td>
+      <td><span class="tag" style="background:${areaColor(r.area)}">${r.area}</span></td>
+      <td style="color:${STONE}">${r.grupo}</td>
+      ${days}
+      <td class="num eff" style="background:${cs.bg};color:${cs.fg}">${(r.efsem*100).toFixed(0)}%</td>
+      <td class="num">${r.pdas.toLocaleString('es-PE')}</td>
+      <td class="num" style="font-weight:bold;color:${PETROLEO}">${r.inc.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      ${rechazoCell}
+    </tr>`;
+  }).join('');
+}
+function areaColor(a){return {PLANCHA:PETROLEO,VAPOR:SLATE,DOBLADO:MONETARIO,ENCAJADO:ESMERALDA}[a]||STONE;}
+
+function fillTablaPorModulo(){
+  const rows=window._rows;
+  const grupos={};
+  rows.forEach(r=>{
+    if(!r.grupo) return;
+    if(!grupos[r.grupo]) grupos[r.grupo]={grupo:r.grupo,area:r.area,integrantes:[],inc:0,
+      pdas: (window._pdasPorGrupo && window._pdasPorGrupo[r.grupo]) || 0,
+      efPond: (window._efPondPorGrupo && window._efPondPorGrupo[r.grupo]) || 0,
+      rechazo:r.rechazo};
+    const g=grupos[r.grupo];
+    g.integrantes.push(r.oper||r.cod);
+    g.inc+=r.inc;
   });
+  const lista=Object.values(grupos).sort((a,b)=>a.area.localeCompare(b.area)||a.grupo.localeCompare(b.grupo));
 
-  function guardar(tipo, btn) {
-    const fecha = $('fecha').value;
-    const area = $('area').value;
-    const modulo = $('modulo').value;
-    if (!fecha) { mostrarAviso(tipo, 'Falta la fecha.', true); return; }
-    if (!modulo) { mostrarAviso(tipo, 'Selecciona un módulo.', true); return; }
+  const head=['Módulo/Pareja','Área','Integrantes','% Efic Sem (ponderada)','Prendas Prod','Incent. S/ (total grupo)','% Rechazo Audit.'];
+  $('tbl').querySelector('thead').innerHTML='<tr>'+head.map((h,i)=>`<th class="${i>=3?'num':''}">${h}</th>`).join('')+'</tr>';
+  $('tbl').querySelector('tbody').innerHTML=lista.map(g=>{
+    const cs=effColor(g.efPond);
+    const rechazoCell = (g.area==='DOBLADO' && g.rechazo!=null)
+      ? `<td class="num" style="color:${g.rechazo>0.5?'#a33':'#333'};font-weight:${g.rechazo>0.5?'bold':'normal'}">${(g.rechazo*100).toFixed(0)}%</td>`
+      : '<td class="num" style="color:#bbb">—</td>';
+    return `<tr>
+      <td style="font-weight:bold">${g.grupo}</td>
+      <td><span class="tag" style="background:${areaColor(g.area)}">${g.area}</span></td>
+      <td>${g.integrantes.join(' · ')}</td>
+      <td class="num eff" style="background:${cs.bg};color:${cs.fg}">${(g.efPond*100).toFixed(0)}%</td>
+      <td class="num">${g.pdas.toLocaleString('es-PE')}</td>
+      <td class="num" style="font-weight:bold;color:${PETROLEO}">${g.inc.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+      ${rechazoCell}
+    </tr>`;
+  }).join('');
+}
 
-    const semana = $('semana').value;
-    let payload = { tipo, fecha, area, modulo, semana };
-    let etiqueta = '';
-
-    if (tipo === 'produccionModulo') {
-      const clave = $('p-clave').value.trim();
-      const subcategoria = $('p-subcategoria').value;
-      const cant = $('p-cant').value;
-      const stdManual = $('p-std').value;
-      const improd = $('p-improd').value;
-      const apoyo = $('p-apoyo').value;
-      if (!clave || !cant) { mostrarAviso(tipo, 'Completa estilo y cantidad.', true); return; }
-      if (area === 'PLANCHA' && !subcategoria) { mostrarAviso(tipo, 'Selecciona la subcategoría (R/A/B/C).', true); return; }
-      payload.clave = clave;
-      payload.subcategoria = area === 'PLANCHA' ? subcategoria : '';
-      payload.cant = Number(cant);
-      payload.stdManual = stdManual ? Number(stdManual) : '';
-      payload.improd = improd ? Number(improd) : '';
-      payload.apoyo = apoyo ? Number(apoyo) : '';
-      etiqueta = area === 'PLANCHA'
-        ? `${modulo} · estilo ${clave} · ${subcategoria} · ${cant} pdas`
-        : `${modulo} · ${clave} · ${cant} pdas`;
-    } else if (tipo === 'sistema') {
-      const estilo = $('s-estilo').value.trim();
-      const cant = $('s-cant').value;
-      if (!estilo || !cant) { mostrarAviso(tipo, 'Completa estilo y cantidad.', true); return; }
-      payload.estilo = estilo;
-      payload.cant = Number(cant);
-      etiqueta = `${modulo} · ${estilo} · ${cant} pdas (sistema)`;
-    } else if (tipo === 'rechazo') {
-      const cant = $('r-cant').value;
-      if (!cant) { mostrarAviso(tipo, 'Completa la cantidad rechazada.', true); return; }
-      payload.cant = Number(cant);
-      etiqueta = `${modulo} · ${cant} rechazadas`;
-    }
-
-    btn.disabled = true;
-    const textoOriginal = btn.textContent;
-    btn.textContent = 'Guardando...';
-
-    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify(payload) })
-      .then(r => r.json())
-      .then(res => {
-        if (res.ok) {
-          mostrarAviso(tipo, res.aviso ? ('Guardado. ' + res.aviso) : 'Guardado.', !!res.aviso);
-          agregarALista(tipo, etiqueta, res.hoja, res.fila);
-          limpiarFormulario(tipo);
-        } else {
-          mostrarAviso(tipo, res.error || 'Error al guardar.', true);
-        }
-      })
-      .catch(() => mostrarAviso(tipo, 'No se confirmó la respuesta (puede tardar la primera vez). Antes de reintentar, revisa el Sheet — quizá sí se guardó y reintentar duplicaría la fila.', true))
-      .finally(() => {
-        btn.disabled = false;
-        btn.textContent = textoOriginal;
-      });
-  }
-
-  function mostrarAviso(tipo, mensaje, esError) {
-    const div = document.getElementById('aviso-' + tipo);
-    div.textContent = mensaje;
-    div.className = 'aviso ' + (esError ? 'error' : 'ok');
-    setTimeout(() => { div.className = 'aviso'; }, esError ? 8000 : 2500);
-  }
-
-  function limpiarFormulario(tipo) {
-    if (tipo === 'produccionModulo') {
-      $('p-clave').value = ''; $('p-cant').value = ''; $('p-std').value = '';
-      $('p-improd').value = ''; $('p-apoyo').value = ''; $('p-subcategoria').value = '';
-      $('p-std-detectado').textContent = ''; $('p-std-detectado').className = 'std-detectado';
-    } else if (tipo === 'sistema') {
-      $('s-estilo').value = ''; $('s-cant').value = '';
-    } else if (tipo === 'rechazo') {
-      $('r-cant').value = '';
-    }
-  }
-
-  function agregarALista(tipo, etiqueta, hoja, fila) {
-    contador++;
-    $('contador-hoy').textContent = contador;
-    const div = document.createElement('div');
-    div.className = 'item-hoy';
-    const quitar = hoja && fila
-      ? `<button type="button" class="quitar-item" data-hoja="${hoja}" data-fila="${fila}">Eliminar</button>`
-      : '';
-    div.innerHTML = `<span>${etiqueta}<span class="tipo"> · ${tipo}</span></span><span>${quitar}</span>`;
-    $('lista-items').prepend(div);
-    const btnQuitar = div.querySelector('.quitar-item');
-    if (btnQuitar) {
-      btnQuitar.addEventListener('click', () => {
-        if (!confirm('¿Eliminar este registro? No se puede deshacer.')) return;
-        btnQuitar.disabled = true;
-        btnQuitar.textContent = '...';
-        fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'eliminarFila', hoja, fila }) })
-          .then(r => r.json())
-          .then(res => {
-            if (res.ok) { div.remove(); }
-            else { alert(res.error || 'No se pudo eliminar.'); btnQuitar.disabled = false; btnQuitar.textContent = 'Eliminar'; }
-          })
-          .catch(() => { alert('No se pudo conectar.'); btnQuitar.disabled = false; btnQuitar.textContent = 'Eliminar'; });
-      });
-    }
-  }
-
-  // --- Zona de peligro: borrar todos los datos de prueba ---
-  $('btn-limpiar-todo').addEventListener('click', () => {
-    const codigo = prompt('Código de administrador:');
-    if (codigo !== 'LIVES2026') { if (codigo !== null) alert('Código incorrecto.'); return; }
-    const primeraConfirmacion = confirm(
-      '¿Borrar TODOS los datos de prueba digitados hasta ahora?\n\n' +
-      'Esto limpia PRODUCCION MODULO, SISTEMA DOB, AUDITORIA DOB, REGISTRO y TIEMPOS.\n' +
-      'NO toca TRABAJADORES, STD, PARAMETROS, HO ni HISTORIAL.\n\n' +
-      'No se puede deshacer.'
-    );
-    if (!primeraConfirmacion) return;
-    const texto = prompt('Para confirmar, escribe BORRAR en mayúsculas:');
-    if (texto !== 'BORRAR') { alert('No coincide, cancelado.'); return; }
-    const btn = $('btn-limpiar-todo');
-    btn.disabled = true;
-    btn.textContent = 'Borrando...';
-    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'limpiarTodo', confirmacion: 'BORRAR', codigoAdmin: codigo }) })
-      .then(r => r.json())
-      .then(res => {
-        alert(res.ok ? res.mensaje : ('Error: ' + res.error));
-        if (res.ok) { $('lista-items').innerHTML = ''; contador = 0; $('contador-hoy').textContent = '0'; }
-      })
-      .catch(() => alert('No se pudo conectar. Intenta de nuevo.'))
-      .finally(() => { btn.disabled = false; btn.textContent = '🧹 Borrar datos de prueba y empezar de cero'; });
-  });
-
-  actualizarPestanasPorArea();
+function mkChart(id,type,data,opts){
+  if(charts[id])charts[id].destroy();
+  charts[id]=new Chart($(id),{type,data,options:Object.assign({responsive:true,maintainAspectRatio:false},opts)});
+}
 </script>
-
 </body>
 </html>
