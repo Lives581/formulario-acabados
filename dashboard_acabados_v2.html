@@ -147,18 +147,27 @@ $('btnExportar').addEventListener('click', () => {
 $('btnCerrarSemana').addEventListener('click', () => {
   const codigo = prompt('Código de administrador:');
   if (codigo !== 'LIVES2026') { if (codigo !== null) alert('Código incorrecto.'); return; }
+
+  const yaExporto = confirm(
+    '¿Ya exportaste el Excel de ESTA semana? (botón "📥 Exportar vista a Excel")\n\n' +
+    'Es necesario porque este proceso va a BORRAR los registros crudos de esta ' +
+    'semana en PRODUCCION MODULO / SISTEMA DOB / AUDITORIA DOB — si no exportaste, cancela y hazlo primero.'
+  );
+  if (!yaExporto) { alert('Cancelado. Exporta primero, luego vuelve a intentar cerrar semana.'); return; }
+
   const ok = confirm(
-    '¿Cerrar esta semana?\n\n' +
-    'Esto archiva el resumen actual a HISTORIAL y LIBERA las asignaciones de ' +
-    'módulo (parejas/módulos) de TRABAJADORES — la semana nueva va a arrancar ' +
-    'sin integrantes asignados, habrá que volver a elegirlos desde el formulario.\n\n' +
-    'Asegúrate de haber revisado el resumen de esta semana antes de continuar. Esta acción no se puede deshacer.'
+    '¿Confirmas cerrar esta semana?\n\n' +
+    '1) Archiva el resumen actual a HISTORIAL (queda guardado para siempre).\n' +
+    '2) Libera las asignaciones de módulo en TRABAJADORES (la semana nueva arranca sin integrantes).\n' +
+    '3) Borra los registros crudos SOLO de esta semana en PRODUCCION MODULO / SISTEMA DOB / AUDITORIA DOB ' +
+    '(las semanas anteriores quedan intactas).\n\n' +
+    'Esta acción no se puede deshacer.'
   );
   if (!ok) return;
   const btn = $('btnCerrarSemana');
   btn.disabled = true;
   btn.textContent = 'Cerrando...';
-  fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'cerrarSemana', codigoAdmin: codigo }) })
+  fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'cerrarSemana', codigoAdmin: codigo, confirmoExporte: true }) })
     .then(r => r.json())
     .then(res => {
       if (res.ok) {
