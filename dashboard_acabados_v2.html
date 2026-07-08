@@ -59,6 +59,7 @@
   <div class="sub" id="sub">Eficiencias · Incentivos<br>Cargando datos en vivo del Sheet...</div>
   <a href="formulario_acabados.html" style="background:#fff;color:#0E3B36;text-decoration:none;
      padding:8px 14px;border-radius:6px;font-size:13px;font-weight:bold;white-space:nowrap">✎ Digitar datos</a>
+  <button class="refresh" id="btnCerrarSemana" style="background:#DC2626">🔒 Cerrar semana</button>
   <button class="refresh" id="btnRefresh">↻ Actualizar</button>
 </div>
 
@@ -118,6 +119,34 @@ function err(msg){$('errbox').innerHTML='<div class="err">'+msg+'</div>';}
 function clearErr(){$('errbox').innerHTML='';}
 
 $('btnRefresh').addEventListener('click', cargar);
+
+$('btnCerrarSemana').addEventListener('click', () => {
+  const ok = confirm(
+    '¿Cerrar esta semana?\n\n' +
+    'Esto archiva el resumen actual a HISTORIAL y LIBERA las asignaciones de ' +
+    'módulo (parejas/módulos) de TRABAJADORES — la semana nueva va a arrancar ' +
+    'sin integrantes asignados, habrá que volver a elegirlos desde el formulario.\n\n' +
+    'Asegúrate de haber revisado el resumen de esta semana antes de continuar. Esta acción no se puede deshacer.'
+  );
+  if (!ok) return;
+  const btn = $('btnCerrarSemana');
+  btn.disabled = true;
+  btn.textContent = 'Cerrando...';
+  fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'cerrarSemana' }) })
+    .then(r => r.json())
+    .then(res => {
+      if (res.ok) {
+        alert(res.mensaje + '\n\nRecuerda: todavía debes cambiar la fecha de la semana en PARAMETROS y pegar el HO nuevo antes de digitar la semana nueva.');
+      } else {
+        alert('No se pudo cerrar la semana: ' + (res.error || 'error desconocido'));
+      }
+    })
+    .catch(() => alert('No se pudo conectar. Revisa tu internet e intenta de nuevo antes de reintentar (para no duplicar el archivo en HISTORIAL).'))
+    .finally(() => {
+      btn.disabled = false;
+      btn.textContent = '🔒 Cerrar semana';
+    });
+});
 cargar();
 
 function cargar(){
@@ -196,9 +225,9 @@ function render(data){
       const idx=row.findIndex(c=>typeof c==='string'&&/Semana/i.test(c));
       if(idx>=0){ for(let j=idx;j<row.length;j++){ if(typeof row[j]==='number'){semN=row[j];break;} } }
       if(semN)break; }
-    if(semN) semTxt='Semana '+semN; }
+    if(semN) semTxt='Semana actual: '+semN; }
   const ahora=new Date();
-  $('sub').innerHTML=(semTxt||'Reporte cargado')+'<br>Actualizado '+ahora.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+  $('sub').innerHTML=(semTxt||'Semana actual')+'<br>Actualizado '+ahora.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
 
   // ---- métricas por área
   const byArea={};
