@@ -707,6 +707,8 @@
 
   // --- Zona de peligro: borrar todos los datos de prueba ---
   $('btn-limpiar-todo').addEventListener('click', () => {
+    const codigo = prompt('Código de administrador:');
+    if (codigo !== 'LIVES2026') { if (codigo !== null) alert('Código incorrecto.'); return; }
     const primeraConfirmacion = confirm(
       '¿Borrar TODOS los datos de prueba digitados hasta ahora?\n\n' +
       'Esto limpia PRODUCCION MODULO, SISTEMA DOB, AUDITORIA DOB, REGISTRO y TIEMPOS.\n' +
@@ -719,7 +721,7 @@
     const btn = $('btn-limpiar-todo');
     btn.disabled = true;
     btn.textContent = 'Borrando...';
-    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'limpiarTodo', confirmacion: 'BORRAR' }) })
+    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'limpiarTodo', confirmacion: 'BORRAR', codigoAdmin: codigo }) })
       .then(r => r.json())
       .then(res => {
         alert(res.ok ? res.mensaje : ('Error: ' + res.error));
