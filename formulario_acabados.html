@@ -416,6 +416,11 @@
   <!-- RECHAZO -->
   <section class="panel" id="panel-rechazo">
     <div class="campo-grupo">
+      <label>Cliente</label>
+      <input type="text" id="r-cliente" placeholder="Ej: THY, PEC, VI2...">
+    </div>
+    <div class="std-detectado" id="r-std-detectado"></div>
+    <div class="campo-grupo">
       <label>Prendas rechazadas</label>
       <input type="number" id="r-cant" min="0" inputmode="numeric">
     </div>
@@ -632,13 +637,6 @@
     for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][5];
     return null;
   }
-  function buscarPorEstiloColE(clave) {
-    // T.PLANCHA (columna E de STD) -- la correcta para PLANCHA. Antes se
-    // usaba por error la F (T.DOB/EMB); no cambiaba el resultado en las 4
-    // filas R/A/B/C porque ahí E y F son iguales, pero quedaba mal apuntada.
-    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][4];
-    return null;
-  }
   function buscarPorEstiloColD(clave) {
     for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][3];
     return null;
@@ -658,7 +656,7 @@
   function detectarStd(area, clave, subcategoria) {
     if (area === 'PLANCHA') {
       if (!subcategoria) return null;
-      return buscarPorEstiloColE(subcategoria.toUpperCase());
+      return buscarPorEstiloColF(subcategoria.toUpperCase());
     }
     if (!clave) return null;
     if (area === 'VAPOR') return buscarPorEstiloColD(clave);
@@ -682,18 +680,21 @@
   $('p-clave').addEventListener('input', actualizarStd);
   $('p-subcategoria').addEventListener('change', actualizarStd);
 
+  function actualizarStdRechazo() {
+    const div = $('r-std-detectado');
+    const cliente = $('r-cliente').value.trim();
+    if (!cliente) { div.textContent = ''; div.className = 'std-detectado'; return; }
+    const std = buscarClienteDob(cliente);
+    if (std != null && std !== '') { div.textContent = `STD detectado: ${std} (retrabajo por prenda)`; div.className = 'std-detectado ok'; }
+    else { div.textContent = 'No se encontró STD para ese cliente — revisa que exista en la hoja STD.'; div.className = 'std-detectado error'; }
+  }
+  $('r-cliente').addEventListener('input', actualizarStdRechazo);
+
   // ================= PRORRATEO SISTEMA (solo DOBLADO) =================
   const DIAS_PRORRATEO = ['LUN','MAR','MIÉ','JUE','VIE','SÁB']; // 6 días, igual que el reporte de INCENTIVOS SISTEMA
 
   function buscarClientePorEstilo(clave) {
     for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][1];
-    return null;
-  }
-  function buscarTotalPorEstilo(clave) {
-    // T.TOTAL (columna C de STD) -- es el que usa SISTEMA DOB, distinto del
-    // T.DOB/EMB (columna F) que usa Producción. Confirmado con los 4 estilos
-    // de ejemplo de Lady: 25175->3.04, 23366->1.5, 24298->3.22, 23580->2.86.
-    for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][2];
     return null;
   }
 
@@ -730,7 +731,7 @@
     const estiloInput = tr.querySelector('.pr-estilo');
     estiloInput.addEventListener('input', () => {
       const codigo = estiloInput.value.trim();
-      const std = buscarTotalPorEstilo(codigo);
+      const std = buscarPorEstiloColF(codigo) ?? buscarClienteDob(codigo);
       tr.querySelector('.pr-std').textContent = (std != null && std !== '') ? std : '—';
       tr.querySelector('.pr-cliente').textContent = buscarClientePorEstilo(codigo) || '—';
       // Si esta fila tiene una porcion de minutos asignada (vino del boton
@@ -953,10 +954,12 @@
       payload.cant = Number(cant);
       etiqueta = `${modulo} · ${estilo} · ${cant} pdas (sistema)`;
     } else if (tipo === 'rechazo') {
+      const cliente = $('r-cliente').value.trim();
       const cant = $('r-cant').value;
-      if (!cant) { mostrarAviso(tipo, 'Completa la cantidad rechazada.', true); return; }
+      if (!cliente || !cant) { mostrarAviso(tipo, 'Completa cliente y cantidad.', true); return; }
+      payload.cliente = cliente;
       payload.cant = Number(cant);
-      etiqueta = `${modulo} · ${cant} rechazadas`;
+      etiqueta = `${modulo} · ${cliente} · ${cant} rechazadas`;
     }
 
     const corrigiendo = editando && editando.tipo === tipo;
@@ -978,9 +981,10 @@
           if (corrigiendo) {
             actualizarItemLista(editando.hoja, editando.fila, etiqueta, tipo);
             entradasGuardadas[editando.hoja + '_' + editando.fila] = { tipo, payload };
+            actualizarEnStorage(editando.hoja, editando.fila, etiqueta, payload);
             salirModoCorreccion();
           } else {
-            agregarALista(tipo, etiqueta, res.hoja, res.fila);
+            agregarALista(tipo, etiqueta, res.hoja, res.fila, payload);
             if (res.hoja && res.fila) entradasGuardadas[res.hoja + '_' + res.fila] = { tipo, payload };
           }
           limpiarFormulario(tipo);
@@ -1024,7 +1028,9 @@
       document.querySelector('[data-tipo="sistema"]').textContent = 'Guardar corrección';
     } else if (tipo === 'rechazo') {
       document.querySelector('[data-tab="rechazo"]').click();
+      $('r-cliente').value = p.cliente || '';
       $('r-cant').value = p.cant || '';
+      actualizarStdRechazo();
       document.querySelector('[data-tipo="rechazo"]').textContent = 'Guardar corrección';
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1060,11 +1066,34 @@
     } else if (tipo === 'sistema') {
       $('s-estilo').value = ''; $('s-cant').value = '';
     } else if (tipo === 'rechazo') {
-      $('r-cant').value = '';
+      $('r-cliente').value = ''; $('r-cant').value = '';
+      $('r-std-detectado').textContent = ''; $('r-std-detectado').className = 'std-detectado';
     }
   }
 
-  function agregarALista(tipo, etiqueta, hoja, fila) {
+  function claveStorageHoy() {
+    return 'acabados_sesion_' + new Date().toISOString().slice(0, 10);
+  }
+  function leerStorageHoy() {
+    try { return JSON.parse(localStorage.getItem(claveStorageHoy()) || '[]'); } catch (e) { return []; }
+  }
+  function guardarEnStorage(item) {
+    const lista = leerStorageHoy();
+    lista.unshift(item);
+    localStorage.setItem(claveStorageHoy(), JSON.stringify(lista));
+  }
+  function quitarDeStorage(hoja, fila) {
+    const lista = leerStorageHoy().filter(it => !(it.hoja === hoja && it.fila === fila));
+    localStorage.setItem(claveStorageHoy(), JSON.stringify(lista));
+  }
+  function actualizarEnStorage(hoja, fila, etiqueta, payload) {
+    const lista = leerStorageHoy();
+    const item = lista.find(it => it.hoja === hoja && it.fila === fila);
+    if (item) { item.etiqueta = etiqueta + ' (corregido)'; item.payload = payload; }
+    localStorage.setItem(claveStorageHoy(), JSON.stringify(lista));
+  }
+
+  function agregarALista(tipo, etiqueta, hoja, fila, payload, persistir) {
     contador++;
     $('contador-hoy').textContent = contador;
     const div = document.createElement('div');
@@ -1076,6 +1105,11 @@
       : '';
     div.innerHTML = `<span class="texto-item">${etiqueta}<span class="tipo"> · ${tipo}</span></span><span>${botones}</span>`;
     $('lista-items').prepend(div);
+
+    if (persistir !== false && hoja && fila) {
+      guardarEnStorage({ tipo, etiqueta, hoja, fila, payload });
+      entradasGuardadas[hoja + '_' + fila] = { tipo, payload };
+    }
 
     const btnCorregir = div.querySelector('.corregir-item');
     if (btnCorregir) btnCorregir.addEventListener('click', () => entrarModoCorreccion(tipo, hoja, fila));
@@ -1089,7 +1123,7 @@
         fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'eliminarFila', hoja, fila }) })
           .then(r => r.json())
           .then(res => {
-            if (res.ok) { div.remove(); delete entradasGuardadas[hoja + '_' + fila]; }
+            if (res.ok) { div.remove(); delete entradasGuardadas[hoja + '_' + fila]; quitarDeStorage(hoja, fila); }
             else { alert(res.error || 'No se pudo eliminar.'); btnQuitar.disabled = false; btnQuitar.textContent = 'Eliminar'; }
           })
           .catch(() => { alert('No se pudo conectar.'); btnQuitar.disabled = false; btnQuitar.textContent = 'Eliminar'; });
@@ -1117,13 +1151,24 @@
       .then(r => r.json())
       .then(res => {
         alert(res.ok ? res.mensaje : ('Error: ' + res.error));
-        if (res.ok) { $('lista-items').innerHTML = ''; contador = 0; $('contador-hoy').textContent = '0'; }
+        if (res.ok) { $('lista-items').innerHTML = ''; contador = 0; $('contador-hoy').textContent = '0'; localStorage.removeItem(claveStorageHoy()); }
       })
       .catch(() => alert('No se pudo conectar. Intenta de nuevo.'))
       .finally(() => { btn.disabled = false; btn.textContent = '🧹 Borrar datos de prueba y empezar de cero'; });
   });
 
   actualizarPestanasPorArea();
+
+  // Restaura lo que se guardo hoy antes de este refresh (sobrevive a F5,
+  // cerrar y volver a abrir la pestana). Vive en este navegador, asi que
+  // no se ve desde otro celular/PC, pero no asusta pensando que se perdio.
+  const restaurados = leerStorageHoy();
+  if (restaurados.length) {
+    restaurados.slice().reverse().forEach(it => {
+      agregarALista(it.tipo, it.etiqueta, it.hoja, it.fila, it.payload, false);
+    });
+    mostrarAviso('produccionModulo', `Se restauraron ${restaurados.length} registro(s) de esta sesion (guardados antes en este navegador).`, false);
+  }
 </script>
 
 </body>
