@@ -368,37 +368,40 @@
       <div class="label" id="modulo-integrantes-sistema" style="font-size:12px;font-weight:bold;color:var(--petroleo);margin-bottom:6px">—</div>
       <div class="label">Eficiencia real de este módulo (objetivo a igualar) — solo informativo, esto no se guarda aquí</div>
       <div class="fila-objetivo" id="fila-objetivo">Selecciona un módulo para ver su objetivo.</div>
+      <div class="label" style="margin-top:8px">Incentivo real (S/ x integrante)</div>
+      <div class="fila-objetivo" id="fila-incentivo-objetivo"></div>
     </div>
 
-    <div class="prorrateo-tabla-wrap">
-      <table class="prorrateo-tabla" id="prorrateo-tabla">
-        <thead>
-          <tr><th>Estilo</th><th>Cliente</th><th>STD</th><th>LUN</th><th>MAR</th><th>MIÉ</th><th>JUE</th><th>VIE</th><th>SÁB</th><th></th></tr>
-        </thead>
-        <tbody id="prorrateo-filas"></tbody>
-        <tfoot>
-          <tr id="fila-resultado-tabla">
-            <td colspan="3" style="text-align:right;font-weight:bold;font-size:12px;color:var(--gris)">% Efic:</td>
-            <td class="res-dia">—</td><td class="res-dia">—</td><td class="res-dia">—</td>
-            <td class="res-dia">—</td><td class="res-dia">—</td><td class="res-dia">—</td>
-            <td></td>
-          </tr>
-        </tfoot>
-      </table>
-    </div>
-    <div class="resultado-leyenda" id="resultado-leyenda"></div>
+    <div id="sistema-doblado">
+      <div class="prorrateo-tabla-wrap">
+        <table class="prorrateo-tabla" id="prorrateo-tabla">
+          <thead>
+            <tr><th>Estilo</th><th>Cliente</th><th>STD</th><th>LUN</th><th>MAR</th><th>MIÉ</th><th>JUE</th><th>VIE</th><th>SÁB</th><th>DOM</th><th></th></tr>
+          </thead>
+          <tbody id="prorrateo-filas"></tbody>
+          <tfoot>
+            <tr id="fila-resultado-tabla">
+              <td colspan="3" style="text-align:right;font-weight:bold;font-size:12px;color:var(--gris)">% Efic:</td>
+              <td class="res-dia">—</td><td class="res-dia">—</td><td class="res-dia">—</td>
+              <td class="res-dia">—</td><td class="res-dia">—</td><td class="res-dia">—</td><td class="res-dia">—</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="resultado-leyenda" id="resultado-leyenda"></div>
 
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-      <button type="button" class="agregar-colaborador" id="btn-agregar-estilo" style="flex:1">+ Agregar estilo</button>
-      <button type="button" class="agregar-colaborador" id="btn-aleatorio" style="flex:1;border-color:var(--monetario);color:var(--monetario)">🎲 5 aleatorios y prorratear</button>
-    </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button type="button" class="agregar-colaborador" id="btn-agregar-estilo" style="flex:1">+ Agregar estilo</button>
+        <button type="button" class="agregar-colaborador" id="btn-aleatorio" style="flex:1;border-color:var(--monetario);color:var(--monetario)">🎲 5 aleatorios y prorratear</button>
+      </div>
 
-    <button type="button" id="btn-guardar-prorrateo" class="guardar-prorrateo-btn" style="margin-top:10px">Guardar todo esto en Sistema</button>
-    <div class="aviso" id="aviso-sistemaBatch"></div>
+      <button type="button" id="btn-guardar-prorrateo" class="guardar-prorrateo-btn" style="margin-top:10px">Guardar todo esto en Sistema</button>
+      <div class="aviso" id="aviso-sistemaBatch"></div>
 
-    <details style="margin-top:16px">
-      <summary style="cursor:pointer;font-size:12px;color:var(--gris)">Agregar un solo estilo suelto (sin prorrateo, un día a la vez)</summary>
-      <div style="margin-top:10px">
+      <details style="margin-top:16px">
+        <summary style="cursor:pointer;font-size:12px;color:var(--gris)">Agregar un solo estilo suelto (sin prorrateo, un día a la vez)</summary>
+        <div style="margin-top:10px">
         <div class="campo-grupo">
           <label>Estilo</label>
           <input type="text" id="s-estilo" placeholder="Ej: 25175" inputmode="numeric">
@@ -411,6 +414,38 @@
         <div class="aviso" id="aviso-sistema"></div>
       </div>
     </details>
+    </div>
+
+    <div id="sistema-plancha" style="display:none">
+      <div class="prorrateo-tabla-wrap">
+        <table class="prorrateo-tabla" id="tabla-sistema-plancha">
+          <thead>
+            <tr><th style="text-align:left">Dato</th><th>LUN</th><th>MAR</th><th>MIÉ</th><th>JUE</th><th>VIE</th><th>SÁB</th><th>DOM</th><th>TOTAL</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="text-align:left;font-weight:bold">Min. Producidos</td>
+              <td class="pl-minprod">—</td><td class="pl-minprod">—</td><td class="pl-minprod">—</td>
+              <td class="pl-minprod">—</td><td class="pl-minprod">—</td><td class="pl-minprod">—</td><td class="pl-minprod">—</td>
+              <td class="pl-minprod-total" style="font-weight:bold">—</td>
+            </tr>
+            <tr>
+              <td style="text-align:left;font-weight:bold">Min. Improductivos</td>
+              <td class="pl-improd">—</td><td class="pl-improd">—</td><td class="pl-improd">—</td>
+              <td class="pl-improd">—</td><td class="pl-improd">—</td><td class="pl-improd">—</td><td class="pl-improd">—</td>
+              <td class="pl-improd-total" style="font-weight:bold">—</td>
+            </tr>
+            <tr>
+              <td style="text-align:left;font-weight:bold">Total Prendas</td>
+              <td class="pl-pdas">—</td><td class="pl-pdas">—</td><td class="pl-pdas">—</td>
+              <td class="pl-pdas">—</td><td class="pl-pdas">—</td><td class="pl-pdas">—</td><td class="pl-pdas">—</td>
+              <td class="pl-pdas-total" style="font-weight:bold">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="resultado-leyenda">Estos números ya están guardados (vienen de lo digitado en Producción) — esta pantalla es solo para leer y pasar al sistema externo, aquí no se escribe nada.</div>
+    </div>
   </section>
 
   <!-- RECHAZO -->
@@ -625,8 +660,10 @@
   function actualizarPestanasPorArea() {
     const esDoblado = $('area').value === 'DOBLADO';
     const esPlancha = $('area').value === 'PLANCHA';
-    document.querySelector('[data-tab="sistema"]').classList.toggle('oculto', !esDoblado);
+    document.querySelector('[data-tab="sistema"]').classList.toggle('oculto', !(esDoblado || esPlancha));
     document.querySelector('[data-tab="rechazo"]').classList.toggle('oculto', !esDoblado);
+    $('sistema-doblado').style.display = esDoblado ? 'block' : 'none';
+    $('sistema-plancha').style.display = esPlancha ? 'block' : 'none';
     $('subcategoria-wrap').style.display = esPlancha ? 'block' : 'none';
     $('label-clave').textContent = esPlancha ? 'Estilo (número de prenda)' : 'Estilo (clave / categoría / cliente)';
     actualizarStd();
@@ -691,7 +728,7 @@
   $('r-cliente').addEventListener('input', actualizarStdRechazo);
 
   // ================= PRORRATEO SISTEMA (solo DOBLADO) =================
-  const DIAS_PRORRATEO = ['LUN','MAR','MIÉ','JUE','VIE','SÁB']; // 6 días, igual que el reporte de INCENTIVOS SISTEMA
+  const DIAS_PRORRATEO = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM']; // 7 días completos
 
   function buscarClientePorEstilo(clave) {
     for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][0]) === String(clave)) return stdTabla[i][1];
@@ -700,12 +737,17 @@
 
   function cargarObjetivoModulo() {
     const modulo = $('modulo').value;
-    if (!modulo || $('area').value !== 'DOBLADO') { $('fila-objetivo').textContent = 'Selecciona un módulo de DOBLADO para ver su objetivo.'; return; }
-    const info = (modulosPorArea['DOBLADO'] || []).find(m => m.modulo === modulo);
+    const area = $('area').value;
+    if (!modulo || (area !== 'DOBLADO' && area !== 'PLANCHA')) {
+      $('fila-objetivo').textContent = 'Selecciona un módulo de DOBLADO o PLANCHA para ver su objetivo.';
+      return;
+    }
+    const info = (modulosPorArea[area] || []).find(m => m.modulo === modulo);
     $('modulo-integrantes-sistema').textContent = info
       ? `Módulo ${modulo} — ${info.integrantes.map(i => `${i.cod} (${i.nombre})`).join(' · ')}`
       : `Módulo ${modulo}`;
     $('fila-objetivo').textContent = 'Cargando objetivo...';
+    $('fila-incentivo-objetivo').textContent = '';
     fetch(URL_APPS_SCRIPT + '?accion=objetivoModulo&modulo=' + encodeURIComponent(modulo))
       .then(r => r.json())
       .then(res => {
@@ -713,9 +755,28 @@
         objetivoModuloActual = res;
         $('fila-objetivo').innerHTML = DIAS_PRORRATEO.map((d, i) =>
           `<span class="dia-obj">${d}: ${(res.dias[i].efic * 100).toFixed(0)}%</span>`).join('');
-        recalcularProrrateo();
+        $('fila-incentivo-objetivo').innerHTML = DIAS_PRORRATEO.map((d, i) =>
+          `<span class="dia-obj">${d}: S/ ${res.dias[i].incentivo.toFixed(2)}</span>`).join('');
+        if (area === 'DOBLADO') recalcularProrrateo();
+        if (area === 'PLANCHA') llenarTablaSistemaPlancha(res.dias);
       })
       .catch(() => { $('fila-objetivo').textContent = 'No se pudo conectar para traer el objetivo.'; });
+  }
+
+  function llenarTablaSistemaPlancha(dias) {
+    const celdasMin = document.querySelectorAll('#tabla-sistema-plancha .pl-minprod');
+    const celdasImprod = document.querySelectorAll('#tabla-sistema-plancha .pl-improd');
+    const celdasPdas = document.querySelectorAll('#tabla-sistema-plancha .pl-pdas');
+    let totalMin = 0, totalImprod = 0, totalPdas = 0;
+    dias.forEach((d, i) => {
+      celdasMin[i].textContent = d.minProd.toFixed(0);
+      celdasImprod[i].textContent = d.improd.toFixed(0);
+      celdasPdas[i].textContent = d.pdas.toFixed(0);
+      totalMin += d.minProd; totalImprod += d.improd; totalPdas += d.pdas;
+    });
+    document.querySelector('.pl-minprod-total').textContent = totalMin.toFixed(0);
+    document.querySelector('.pl-improd-total').textContent = totalImprod.toFixed(0);
+    document.querySelector('.pl-pdas-total').textContent = totalPdas.toFixed(0);
   }
 
   function crearFilaProrrateo(estiloInicial, stdInicial, shareInicial) {
