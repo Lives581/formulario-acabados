@@ -472,9 +472,15 @@
       <label>Prendas rechazadas</label>
       <input type="text" id="r-cant" min="0" inputmode="tel" placeholder="Ej: 50+30+20 y Enter para sumar">
     </div>
-    <div class="campo-grupo">
-      <label>Min improductivos (opcional)</label>
-      <input type="number" id="r-improd" min="0" inputmode="numeric">
+    <div class="fila-doble">
+      <div class="campo-grupo">
+        <label>Min improductivos (opcional)</label>
+        <input type="number" id="r-improd" min="0" inputmode="numeric">
+      </div>
+      <div class="campo-grupo">
+        <label>Apoyo módulo (opcional)</label>
+        <input type="number" id="r-apoyo" min="0" inputmode="numeric">
+      </div>
     </div>
     <button class="guardar" data-tipo="rechazo">Agregar rechazo</button>
     <div class="aviso" id="aviso-rechazo"></div>
@@ -1052,10 +1058,12 @@
       const cliente = $('r-cliente').value.trim();
       const cant = $('r-cant').value;
       const improdR = $('r-improd').value;
+      const apoyoR = $('r-apoyo').value;
       if (!cliente || !cant) { mostrarAviso(tipo, 'Completa cliente y cantidad.', true); return; }
       payload.cliente = cliente;
       payload.cant = Number(cant);
       payload.improd = improdR ? Number(improdR) : '';
+      payload.apoyo = apoyoR ? Number(apoyoR) : '';
       etiqueta = `${modulo} · ${cliente} · ${cant} rechazadas`;
     }
 
@@ -1126,6 +1134,7 @@
       $('r-cliente').value = p.cliente || '';
       $('r-cant').value = p.cant || '';
       $('r-improd').value = p.improd || '';
+      $('r-apoyo').value = p.apoyo || '';
       actualizarStdRechazo();
       document.querySelector('[data-tipo="rechazo"]').textContent = 'Guardar corrección';
     }
@@ -1162,7 +1171,7 @@
     } else if (tipo === 'sistema') {
       $('s-estilo').value = ''; $('s-cant').value = '';
     } else if (tipo === 'rechazo') {
-      $('r-cliente').value = ''; $('r-cant').value = ''; $('r-improd').value = '';
+      $('r-cliente').value = ''; $('r-cant').value = ''; $('r-improd').value = ''; $('r-apoyo').value = '';
       $('r-std-detectado').textContent = ''; $('r-std-detectado').className = 'std-detectado';
     }
   }
