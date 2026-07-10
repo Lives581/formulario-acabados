@@ -354,7 +354,7 @@
     <div class="fila-doble">
       <div class="campo-grupo">
         <label>Cantidad (total del módulo)</label>
-        <input type="number" id="p-cant" min="0" inputmode="numeric">
+        <input type="text" id="p-cant" min="0" inputmode="numeric" placeholder="Ej: 50 30 20 y Enter para sumar">
       </div>
       <div class="campo-grupo">
         <label>STD manual (solo si difiere del detectado)</label>
@@ -421,7 +421,7 @@
         </div>
         <div class="campo-grupo">
           <label>Cantidad</label>
-          <input type="number" id="s-cant" min="0" inputmode="numeric">
+          <input type="text" id="s-cant" min="0" inputmode="numeric" placeholder="Ej: 50 30 20 y Enter para sumar">
         </div>
         <button class="guardar" data-tipo="sistema">Agregar producción sistema</button>
         <div class="aviso" id="aviso-sistema"></div>
@@ -465,12 +465,12 @@
   <section class="panel" id="panel-rechazo">
     <div class="campo-grupo">
       <label>Cliente</label>
-      <input type="text" id="r-cliente" placeholder="Ej: THY, PEC, VI2...">
+      <select id="r-cliente"><option value="">-- Selecciona --</option></select>
     </div>
     <div class="std-detectado" id="r-std-detectado"></div>
     <div class="campo-grupo">
       <label>Prendas rechazadas</label>
-      <input type="number" id="r-cant" min="0" inputmode="numeric">
+      <input type="text" id="r-cant" min="0" inputmode="numeric" placeholder="Ej: 50 30 20 y Enter para sumar">
     </div>
     <div class="campo-grupo">
       <label>Min improductivos (opcional)</label>
@@ -516,6 +516,7 @@
         trabajadores = data.trabajadores || {};
         modulosPorArea = data.modulos || {};
         stdTabla = data.std || [];
+        poblarClientesRechazo();
         if (data.semana && !$('semana').value) {
           $('semana').value = data.semana;
           $('legend-semana').textContent = `Semana actual en el Sheet: ${data.semana}. Cámbiala aquí solo si empieza una semana nueva.`;
@@ -699,6 +700,19 @@
     for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][8]) === String(clave)) return stdTabla[i][11];
     return null;
   }
+  function poblarClientesRechazo() {
+    const vistos = new Set();
+    const clientes = [];
+    for (let i = 1; i < stdTabla.length; i++) {
+      const c = stdTabla[i][8]; // columna I: CLIENTE (la misma tabla que usa el fallback de DOBLADO)
+      if (c && !vistos.has(c)) { vistos.add(c); clientes.push(c); }
+    }
+    clientes.sort();
+    const sel = $('r-cliente');
+    const actual = sel.value;
+    sel.innerHTML = '<option value="">-- Selecciona --</option>' + clientes.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (actual) sel.value = actual;
+  }
   function buscarNivelPorEstilo(clave) {
     for (let i = 1; i < stdTabla.length; i++) if (String(stdTabla[i][13]) === String(clave)) return stdTabla[i][14];
     return null;
@@ -742,7 +756,7 @@
     if (std != null && std !== '') { div.textContent = `STD detectado: ${std} (retrabajo por prenda)`; div.className = 'std-detectado ok'; }
     else { div.textContent = 'No se encontró STD para ese cliente — revisa que exista en la hoja STD.'; div.className = 'std-detectado error'; }
   }
-  $('r-cliente').addEventListener('input', actualizarStdRechazo);
+  $('r-cliente').addEventListener('change', actualizarStdRechazo);
 
   // ================= PRORRATEO SISTEMA (solo DOBLADO) =================
   const DIAS_PRORRATEO = ['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM']; // 7 días completos
@@ -1257,43 +1271,21 @@
 
   // Muestra lo guardado hoy que coincida con el filtro actual (fecha/área/
   // módulo). Al cambiar cualquiera de esos 3 campos, la lista se refiltra sola.
-  // --- Sumador rápido: para no tener que hacer la suma a mano antes de
-  // escribir la cantidad final. Se le puede aplicar a cualquier input de
-  // cantidad -- suma lo que escriba (separado por espacio, coma o +) y lo
-  // agrega al valor que ya hubiera en el campo principal.
+  // --- Sumador rápido integrado: si escribe un solo número, se queda tal
+  // cual (comportamiento normal). Si escribe varios separados por espacio,
+  // coma o +, al presionar Enter el campo se reemplaza por la suma total.
   function activarSumadorRapido(inputId) {
     const input = document.getElementById(inputId);
     if (!input) return;
-    const wrap = document.createElement('div');
-    wrap.className = 'sumador-rapido';
-    wrap.innerHTML = `
-      <button type="button" class="btn-abrir-sumador">🧮 Sumar varias cantidades</button>
-      <div class="caja-sumador" style="display:none">
-        <input type="text" class="input-sumador" placeholder="Ej: 50 30 20" inputmode="numeric">
-        <button type="button" class="btn-aplicar-sumador">Sumar</button>
-      </div>
-    `;
-    input.insertAdjacentElement('afterend', wrap);
-    const btnAbrir = wrap.querySelector('.btn-abrir-sumador');
-    const caja = wrap.querySelector('.caja-sumador');
-    const campoTexto = wrap.querySelector('.input-sumador');
-    btnAbrir.addEventListener('click', () => {
-      const abierta = caja.style.display !== 'none';
-      caja.style.display = abierta ? 'none' : 'flex';
-      if (!abierta) campoTexto.focus();
+    input.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      const numeros = input.value.split(/[\s,+]+/).map(Number).filter(n => !isNaN(n) && n !== 0);
+      if (numeros.length > 1) {
+        e.preventDefault();
+        input.value = numeros.reduce((a, b) => a + b, 0);
+        input.dispatchEvent(new Event('input')); // dispara los listeners que ya tenga el campo (STD, etc.)
+      }
     });
-    function aplicar() {
-      const numeros = campoTexto.value.split(/[\s,+]+/).map(Number).filter(n => !isNaN(n) && n !== 0);
-      if (numeros.length === 0) return;
-      const suma = numeros.reduce((a, b) => a + b, 0);
-      const actual = Number(input.value) || 0;
-      input.value = actual + suma;
-      input.dispatchEvent(new Event('input')); // dispara los listeners que ya tenga el campo (STD, etc.)
-      campoTexto.value = '';
-      caja.style.display = 'none';
-    }
-    wrap.querySelector('.btn-aplicar-sumador').addEventListener('click', aplicar);
-    campoTexto.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); aplicar(); } });
   }
   activarSumadorRapido('p-cant');
   activarSumadorRapido('r-cant');
