@@ -684,10 +684,12 @@
   function actualizarPestanasPorArea() {
     const esDoblado = $('area').value === 'DOBLADO';
     const esPlancha = $('area').value === 'PLANCHA';
-    document.querySelector('[data-tab="sistema"]').classList.toggle('oculto', !(esDoblado || esPlancha));
+    const esVaporOEncajado = $('area').value === 'VAPOR' || $('area').value === 'ENCAJADO';
+    const esSoloLectura = esPlancha || esVaporOEncajado;
+    document.querySelector('[data-tab="sistema"]').classList.toggle('oculto', !(esDoblado || esSoloLectura));
     document.querySelector('[data-tab="rechazo"]').classList.toggle('oculto', !esDoblado);
     $('sistema-doblado').style.display = esDoblado ? 'block' : 'none';
-    $('sistema-plancha').style.display = esPlancha ? 'block' : 'none';
+    $('sistema-plancha').style.display = esSoloLectura ? 'block' : 'none';
     $('subcategoria-wrap').style.display = esPlancha ? 'block' : 'none';
     $('label-clave').textContent = esPlancha ? 'Estilo (número de prenda)' : 'Estilo (clave / categoría / cliente)';
     actualizarStd();
@@ -775,8 +777,9 @@
   function cargarObjetivoModulo() {
     const modulo = $('modulo').value;
     const area = $('area').value;
-    if (!modulo || (area !== 'DOBLADO' && area !== 'PLANCHA')) {
-      $('fila-objetivo').textContent = 'Selecciona un módulo de DOBLADO o PLANCHA para ver su objetivo.';
+    const areasValidas = ['DOBLADO', 'PLANCHA', 'VAPOR', 'ENCAJADO'];
+    if (!modulo || !areasValidas.includes(area)) {
+      $('fila-objetivo').textContent = 'Selecciona un módulo para ver su objetivo.';
       return;
     }
     const info = (modulosPorArea[area] || []).find(m => m.modulo === modulo);
@@ -795,7 +798,7 @@
         $('fila-incentivo-objetivo').innerHTML = DIAS_PRORRATEO.map((d, i) =>
           `<span class="dia-obj">${d}: S/ ${res.dias[i].incentivo.toFixed(2)}</span>`).join('');
         if (area === 'DOBLADO') recalcularProrrateo();
-        if (area === 'PLANCHA') llenarTablaSistemaPlancha(res.dias);
+        if (area === 'PLANCHA' || area === 'VAPOR' || area === 'ENCAJADO') llenarTablaSistemaPlancha(res.dias);
       })
       .catch(() => { $('fila-objetivo').textContent = 'No se pudo conectar para traer el objetivo.'; });
   }
