@@ -382,7 +382,9 @@
   <section class="panel" id="panel-sistema">
     <div class="objetivo-box" id="objetivo-box">
       <div class="label" id="modulo-integrantes-sistema" style="font-size:12px;font-weight:bold;color:var(--petroleo);margin-bottom:6px">—</div>
-      <div class="label">Eficiencia real de este módulo (objetivo a igualar) — solo informativo, esto no se guarda aquí</div>
+      <div class="label">Resultado por persona en la fecha seleccionada</div>
+      <div class="fila-objetivo" id="resultados-por-persona"></div>
+      <div class="label" style="margin-top:8px">Eficiencia real de este módulo (objetivo a igualar) — solo informativo, esto no se guarda aquí</div>
       <div class="fila-objetivo" id="fila-objetivo">Selecciona un módulo para ver su objetivo.</div>
       <div class="label" style="margin-top:8px">Incentivo real (S/ x integrante)</div>
       <div class="fila-objetivo" id="fila-incentivo-objetivo"></div>
@@ -557,21 +559,43 @@
     mostrarIntegrantesAutomaticos();
   }
 
+  // Roster real de un módulo en una fecha puntual: si es hoy, usa lo que ya
+  // está cargado en el navegador (instantáneo); si es una fecha distinta,
+  // consulta al servidor (1-2 seg). callback(codigos) siempre recibe un
+  // arreglo, aunque esté vacío.
+  function obtenerRosterEnFecha(area, modulo, fecha, callback) {
+    if (!modulo || !fecha) { callback([]); return; }
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    if (fecha === hoyStr) {
+      const lista = modulosPorArea[area] || [];
+      const info = lista.find(m => m.modulo === modulo);
+      callback(info ? info.integrantes.map(i => i.cod) : []);
+      return;
+    }
+    fetch(URL_APPS_SCRIPT + '?accion=integrantesEnFecha&area=' + encodeURIComponent(area) + '&modulo=' + encodeURIComponent(modulo) + '&fecha=' + encodeURIComponent(fecha))
+      .then(r => r.json())
+      .then(res => callback((res.ok && res.codigos) ? res.codigos : []))
+      .catch(() => callback([]));
+  }
+
   function mostrarIntegrantesAutomaticos() {
     const area = $('area').value;
     const modSel = $('modulo').value;
-    const lista = modulosPorArea[area] || [];
-    const info = lista.find(m => m.modulo === modSel);
+    const fecha = $('fecha').value;
     const nombresDiv = $('integrantes-nombres');
-    if (!info || info.integrantes.length === 0) {
-      nombresDiv.textContent = 'Nadie asignado todavía a este módulo — usa "Cambiar integrantes".';
-      nombresDiv.className = 'nombres';
-      nombresDiv.style.color = 'var(--alerta)';
-    } else {
-      nombresDiv.textContent = info.integrantes.map(i => `${i.cod} (${i.nombre})`).join(' · ');
-      nombresDiv.className = 'nombres';
-      nombresDiv.style.color = '';
-    }
+    nombresDiv.textContent = 'Cargando integrantes...';
+    nombresDiv.className = 'nombres';
+    nombresDiv.style.color = '';
+    obtenerRosterEnFecha(area, modSel, fecha, (codigos) => {
+      // Por si el área/módulo/fecha cambiaron mientras esperábamos la respuesta
+      if ($('area').value !== area || $('modulo').value !== modSel || $('fecha').value !== fecha) return;
+      if (codigos.length === 0) {
+        nombresDiv.textContent = 'Nadie asignado a este módulo en esta fecha — usa "Cambiar integrantes".';
+        nombresDiv.style.color = 'var(--alerta)';
+      } else {
+        nombresDiv.textContent = codigos.map(cod => `${cod} (${(trabajadores[cod] || {}).nombre || '?'})`).join(' · ');
+      }
+    });
   }
 
   let modoEdicionIntegrantes = false;
@@ -587,26 +611,33 @@
     const fecha = $('fecha').value;
     const avisoFecha = $('aviso-fecha-integrantes');
     if (!modulo || !fecha) { reiniciarColaboradoresMini(); avisoFecha.style.display = 'none'; return; }
-    avisoFecha.style.display = 'block';
-    avisoFecha.textContent = 'Mostrando quién estaba en este módulo el ' + fecha.split('-').reverse().join('/') + '. El cambio que guardes aplicará desde esa fecha.';
-    $('colaboradores-modulo').innerHTML = '<div class="nombre-mini">Cargando integrantes de esa fecha...</div>';
-    fetch(URL_APPS_SCRIPT + '?accion=integrantesEnFecha&area=' + encodeURIComponent(area) + '&modulo=' + encodeURIComponent(modulo) + '&fecha=' + encodeURIComponent(fecha))
-      .then(r => r.json())
-      .then(res => {
-        $('colaboradores-modulo').innerHTML = '';
-        const codigos = (res.ok && res.codigos && res.codigos.length) ? res.codigos : [];
-        while (codigos.length < 2) codigos.push('');
-        codigos.forEach((cod, i) => {
-          const bloque = crearBloqueColaboradorMini(i);
-          $('colaboradores-modulo').appendChild(bloque);
-          if (cod) {
-            const input = bloque.querySelector('.cod-colaborador');
-            input.value = cod;
-            input.dispatchEvent(new Event('input'));
-          }
-        });
-      })
-      .catch(() => { reiniciarColaboradoresMini(); });
+
+    const hoyStr = new Date().toISOString().slice(0, 10);
+    avisoFecha.style.display = fecha === hoyStr ? 'none' : 'block';
+    if (fecha !== hoyStr) {
+      avisoFecha.textContent = 'Buscando quién estaba en este módulo el ' + fecha.split('-').reverse().join('/') + '...';
+      $('colaboradores-modulo').innerHTML = '<div class="nombre-mini">Cargando...</div>';
+    }
+    obtenerRosterEnFecha(area, modulo, fecha, (codigos) => {
+      if (fecha !== hoyStr) {
+        avisoFecha.textContent = 'Mostrando quién estaba en este módulo el ' + fecha.split('-').reverse().join('/') + '. El cambio que guardes aplicará desde esa fecha.';
+      }
+      llenarColaboradoresMini(codigos);
+    });
+  }
+  function llenarColaboradoresMini(codigos) {
+    $('colaboradores-modulo').innerHTML = '';
+    const lista = codigos.slice();
+    while (lista.length < 2) lista.push('');
+    lista.forEach((cod, i) => {
+      const bloque = crearBloqueColaboradorMini(i);
+      $('colaboradores-modulo').appendChild(bloque);
+      if (cod) {
+        const input = bloque.querySelector('.cod-colaborador');
+        input.value = cod;
+        input.dispatchEvent(new Event('input'));
+      }
+    });
   }
   function salirModoEdicion() {
     modoEdicionIntegrantes = false;
@@ -814,15 +845,32 @@
   function cargarObjetivoModulo() {
     const modulo = $('modulo').value;
     const area = $('area').value;
+    const fecha = $('fecha').value;
     const areasValidas = ['DOBLADO', 'PLANCHA', 'VAPOR', 'ENCAJADO'];
     if (!modulo || !areasValidas.includes(area)) {
       $('fila-objetivo').textContent = 'Selecciona un módulo para ver su objetivo.';
       return;
     }
-    const info = (modulosPorArea[area] || []).find(m => m.modulo === modulo);
-    $('modulo-integrantes-sistema').textContent = info
-      ? `Módulo ${modulo} — ${info.integrantes.map(i => `${i.cod} (${i.nombre})`).join(' · ')}`
-      : `Módulo ${modulo}`;
+    $('modulo-integrantes-sistema').textContent = `Módulo ${modulo} — cargando integrantes...`;
+    obtenerRosterEnFecha(area, modulo, fecha, (codigos) => {
+      if ($('fecha').value !== fecha || $('modulo').value !== modulo) return; // cambió mientras esperábamos
+      $('modulo-integrantes-sistema').textContent = codigos.length
+        ? `Módulo ${modulo} — ${codigos.map(cod => `${cod} (${(trabajadores[cod] || {}).nombre || '?'})`).join(' · ')}`
+        : `Módulo ${modulo} — nadie asignado en esta fecha`;
+    });
+    $('resultados-por-persona').innerHTML = '<div class="nombre-mini">Cargando resultados de esta fecha...</div>';
+    fetch(URL_APPS_SCRIPT + '?accion=resultadosModuloFecha&area=' + encodeURIComponent(area) + '&modulo=' + encodeURIComponent(modulo) + '&fecha=' + encodeURIComponent(fecha))
+      .then(r => r.json())
+      .then(res => {
+        if ($('fecha').value !== fecha || $('modulo').value !== modulo) return;
+        const cont = $('resultados-por-persona');
+        if (!res.ok || res.fueraDeSemana) { cont.innerHTML = '<div class="nombre-mini">Esa fecha no está dentro de la semana activa del Sheet.</div>'; return; }
+        if (!res.personas || res.personas.length === 0) { cont.innerHTML = '<div class="nombre-mini">Nadie asignado a este módulo en esta fecha.</div>'; return; }
+        cont.innerHTML = res.personas.map(p =>
+          `<div class="dia-obj">${p.nombre}: ${(p.efic * 100).toFixed(0)}% efic · S/ ${p.incentivo.toFixed(2)}</div>`
+        ).join('');
+      })
+      .catch(() => { $('resultados-por-persona').innerHTML = '<div class="nombre-mini">No se pudo cargar los resultados por persona.</div>'; });
     $('fila-objetivo').textContent = 'Cargando objetivo...';
     $('fila-incentivo-objetivo').textContent = '';
     fetch(URL_APPS_SCRIPT + '?accion=objetivoModulo&modulo=' + encodeURIComponent(modulo))
@@ -1340,7 +1388,11 @@
   activarSumadorRapido('r-cant');
   activarSumadorRapido('s-cant');
 
-  $('fecha').addEventListener('change', renderizarLista);
+  $('fecha').addEventListener('change', () => {
+    renderizarLista();
+    mostrarIntegrantesAutomaticos();
+    if (document.querySelector('[data-tab="sistema"]').classList.contains('activo')) cargarObjetivoModulo();
+  });
   $('area').addEventListener('change', renderizarLista);
   $('modulo').addEventListener('change', renderizarLista);
   renderizarLista();
