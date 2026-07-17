@@ -879,12 +879,27 @@
           : `Módulo ${modulo} — nadie asignado en esta fecha`;
 
         const cont = $('resultados-por-persona');
-        if (res.fueraDeSemana) { cont.innerHTML = '<div class="nombre-mini">Esa fecha no está dentro de la semana activa del Sheet.</div>'; }
-        else if (!res.personas || res.personas.length === 0) { cont.innerHTML = '<div class="nombre-mini">Nadie asignado a este módulo en esta fecha.</div>'; }
-        else {
-          cont.innerHTML = res.personas.map(p =>
-            `<div class="dia-obj">${p.nombre}: ${(p.efic * 100).toFixed(0)}% efic · S/ ${p.incentivo.toFixed(2)}</div>`
-          ).join('');
+        if (res.fueraDeSemana) {
+          cont.innerHTML = '<div class="nombre-mini">Esa fecha todavía no llega — es posterior a la semana activa del Sheet.</div>';
+        } else if (res.sinArchivo) {
+          cont.innerHTML = '<div class="nombre-mini">Esta semana se cerró antes de que existiera el archivo de detalle diario, así que no hay resultado guardado para esta fecha.</div>';
+        } else if (!res.personas || res.personas.length === 0) {
+          cont.innerHTML = '<div class="nombre-mini">Nadie asignado a este módulo en esta fecha.</div>';
+        } else {
+          cont.innerHTML = (res.esArchivo ? '<div class="nombre-mini" style="color:var(--aviso);margin-bottom:4px">📁 Semana archivada — datos guardados al cerrar semana.</div>' : '')
+            + res.personas.map(p =>
+              `<div class="dia-obj">${p.nombre}: ${(p.efic * 100).toFixed(0)}% efic · S/ ${p.incentivo.toFixed(2)}</div>`
+            ).join('');
+        }
+
+        if (res.esArchivo || res.fueraDeSemana) {
+          // El objetivo semanal y el prorrateo son herramientas para
+          // PLANIFICAR la semana activa -- no aplican a una semana ya
+          // cerrada, así que se ocultan en vez de mostrar un error.
+          $('fila-objetivo').textContent = res.esArchivo ? 'No aplica: esta es una semana archivada.' : 'No aplica: esa fecha aún no llega.';
+          $('fila-incentivo-objetivo').textContent = '';
+          objetivoModuloActual = null;
+          return;
         }
 
         if (!res.dias) { $('fila-objetivo').textContent = 'No se pudo cargar el objetivo semanal.'; objetivoModuloActual = null; return; }
