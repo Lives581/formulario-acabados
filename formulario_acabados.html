@@ -9,6 +9,7 @@
     --petroleo: #0E3B36;
     --esmeralda: #10B981;
     --alerta: #DC2626;
+    --aviso: #D97706;
     --monetario: #F59E0B;
     --fondo: #F1F6F4;
     --gris: #7C7B77;
@@ -165,6 +166,7 @@
   }
   .integrantes-box .nombre-mini.ok { color: var(--esmeralda); font-weight: bold; }
   .integrantes-box .nombre-mini.error { color: var(--alerta); }
+  .integrantes-box .nombre-mini.aviso { color: var(--aviso); font-weight: bold; max-width: 220px; white-space: normal; }
   .integrantes-box .quitar-mini {
     background: none; border: none; color: var(--alerta);
     font-size: 16px; cursor: pointer; padding: 4px;
@@ -639,8 +641,15 @@
       input.value = cod;
       if (!cod) { nombreSpan.textContent = ''; nombreSpan.className = 'nombre-mini'; return; }
       const t = trabajadores[cod];
-      if (t) { nombreSpan.textContent = t.nombre; nombreSpan.className = 'nombre-mini ok'; }
-      else { nombreSpan.textContent = '¿No existe?'; nombreSpan.className = 'nombre-mini error'; }
+      if (!t) { nombreSpan.textContent = '¿No existe?'; nombreSpan.className = 'nombre-mini error'; return; }
+      const moduloEditando = $('modulo').value;
+      if (t.modulo && t.modulo !== moduloEditando) {
+        nombreSpan.textContent = t.nombre + ' — ya está en ' + t.modulo;
+        nombreSpan.className = 'nombre-mini aviso';
+      } else {
+        nombreSpan.textContent = t.nombre;
+        nombreSpan.className = 'nombre-mini ok';
+      }
     });
     const quitar = div.querySelector('.quitar-mini');
     if (quitar) quitar.addEventListener('click', () => div.remove());
