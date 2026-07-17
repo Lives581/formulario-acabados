@@ -596,12 +596,14 @@
   $('btn-guardar-integrantes').addEventListener('click', () => {
     const modulo = $('modulo').value;
     const area = $('area').value;
+    const fecha = $('fecha').value;
     const integrantes = obtenerCodigosColaboradores();
     if (!modulo) { alert('Selecciona un módulo primero.'); return; }
+    if (!fecha) { alert('Selecciona primero la fecha desde la que aplica este cambio de integrantes (arriba, campo Fecha).'); return; }
     if (integrantes.length === 0) { alert('Escribe el código de al menos un colaborador.'); return; }
     const btn = $('btn-guardar-integrantes');
     btn.disabled = true; btn.textContent = 'Guardando...';
-    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'asignarModulo', modulo, area, integrantes }) })
+    fetch(URL_APPS_SCRIPT, { method: 'POST', body: JSON.stringify({ tipo: 'asignarModulo', modulo, area, fecha, integrantes }) })
       .then(r => r.json())
       .then(res => {
         if (res.ok) {
