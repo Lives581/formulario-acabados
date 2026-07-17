@@ -851,32 +851,43 @@
       $('fila-objetivo').textContent = 'Selecciona un módulo para ver su objetivo.';
       return;
     }
-    $('modulo-integrantes-sistema').textContent = `Módulo ${modulo} — cargando integrantes...`;
-    obtenerRosterEnFecha(area, modulo, fecha, (codigos) => {
-      if ($('fecha').value !== fecha || $('modulo').value !== modulo) return; // cambió mientras esperábamos
-      $('modulo-integrantes-sistema').textContent = codigos.length
-        ? `Módulo ${modulo} — ${codigos.map(cod => `${cod} (${(trabajadores[cod] || {}).nombre || '?'})`).join(' · ')}`
-        : `Módulo ${modulo} — nadie asignado en esta fecha`;
-    });
-    $('resultados-por-persona').innerHTML = '<div class="nombre-mini">Cargando resultados de esta fecha...</div>';
+    $('modulo-integrantes-sistema').textContent = `Módulo ${modulo} — cargando...`;
+    $('resultados-por-persona').innerHTML = '<div class="nombre-mini">Cargando...</div>';
+    $('fila-objetivo').textContent = 'Cargando objetivo...';
+    $('fila-incentivo-objetivo').textContent = '';
+
+    // 17-jul-2026: antes esto eran 2-3 llamadas separadas al servidor (cada
+    // una con 1-3 seg de demora de Apps Script) -- ahora es UNA sola que
+    // trae todo junto (integrantes de esa fecha, su eficiencia/incentivo,
+    // y el objetivo semanal del módulo), así cambiar fecha o módulo se
+    // siente bastante más rápido.
     fetch(URL_APPS_SCRIPT + '?accion=resultadosModuloFecha&area=' + encodeURIComponent(area) + '&modulo=' + encodeURIComponent(modulo) + '&fecha=' + encodeURIComponent(fecha))
       .then(r => r.json())
       .then(res => {
-        if ($('fecha').value !== fecha || $('modulo').value !== modulo) return;
+        if ($('fecha').value !== fecha || $('modulo').value !== modulo) return; // cambió mientras esperábamos
+
+        if (!res.ok) {
+          $('modulo-integrantes-sistema').textContent = `Módulo ${modulo}`;
+          $('resultados-por-persona').innerHTML = '';
+          $('fila-objetivo').textContent = 'No se pudo cargar el objetivo: ' + (res.error || '');
+          objetivoModuloActual = null;
+          return;
+        }
+
+        $('modulo-integrantes-sistema').textContent = res.roster && res.roster.length
+          ? `Módulo ${modulo} — ${res.roster.map(p => `${p.cod} (${p.nombre})`).join(' · ')}`
+          : `Módulo ${modulo} — nadie asignado en esta fecha`;
+
         const cont = $('resultados-por-persona');
-        if (!res.ok || res.fueraDeSemana) { cont.innerHTML = '<div class="nombre-mini">Esa fecha no está dentro de la semana activa del Sheet.</div>'; return; }
-        if (!res.personas || res.personas.length === 0) { cont.innerHTML = '<div class="nombre-mini">Nadie asignado a este módulo en esta fecha.</div>'; return; }
-        cont.innerHTML = res.personas.map(p =>
-          `<div class="dia-obj">${p.nombre}: ${(p.efic * 100).toFixed(0)}% efic · S/ ${p.incentivo.toFixed(2)}</div>`
-        ).join('');
-      })
-      .catch(() => { $('resultados-por-persona').innerHTML = '<div class="nombre-mini">No se pudo cargar los resultados por persona.</div>'; });
-    $('fila-objetivo').textContent = 'Cargando objetivo...';
-    $('fila-incentivo-objetivo').textContent = '';
-    fetch(URL_APPS_SCRIPT + '?accion=objetivoModulo&modulo=' + encodeURIComponent(modulo))
-      .then(r => r.json())
-      .then(res => {
-        if (!res.ok) { $('fila-objetivo').textContent = 'No se pudo cargar el objetivo: ' + (res.error || ''); objetivoModuloActual = null; return; }
+        if (res.fueraDeSemana) { cont.innerHTML = '<div class="nombre-mini">Esa fecha no está dentro de la semana activa del Sheet.</div>'; }
+        else if (!res.personas || res.personas.length === 0) { cont.innerHTML = '<div class="nombre-mini">Nadie asignado a este módulo en esta fecha.</div>'; }
+        else {
+          cont.innerHTML = res.personas.map(p =>
+            `<div class="dia-obj">${p.nombre}: ${(p.efic * 100).toFixed(0)}% efic · S/ ${p.incentivo.toFixed(2)}</div>`
+          ).join('');
+        }
+
+        if (!res.dias) { $('fila-objetivo').textContent = 'No se pudo cargar el objetivo semanal.'; objetivoModuloActual = null; return; }
         objetivoModuloActual = res;
         $('fila-objetivo').innerHTML = DIAS_PRORRATEO.map((d, i) =>
           `<span class="dia-obj">${d}: ${(res.dias[i].efic * 100).toFixed(0)}%</span>`).join('');
@@ -885,7 +896,10 @@
         if (area === 'DOBLADO') recalcularProrrateo();
         if (area === 'PLANCHA' || area === 'VAPOR' || area === 'ENCAJADO') llenarTablaSistemaPlancha(res.dias);
       })
-      .catch(() => { $('fila-objetivo').textContent = 'No se pudo conectar para traer el objetivo.'; });
+      .catch(() => {
+        $('fila-objetivo').textContent = 'No se pudo conectar para traer el objetivo.';
+        $('resultados-por-persona').innerHTML = '';
+      });
   }
 
   function llenarTablaSistemaPlancha(dias) {
@@ -1319,23 +1333,61 @@
     }
   }
 
-  // Solo muestra lo guardado hoy que coincide EXACTO con la fecha/área/módulo
-  // que tienes seleccionados ahora mismo -- si cambias el filtro arriba, la
-  // lista cambia sola para mostrar solo lo de esa combinación.
+  // Muestra lo guardado hoy que coincide EXACTO con la fecha/área/módulo que
+  // tienes seleccionados ahora mismo. Primero pinta lo local al instante (sin
+  // esperar red), y luego (17-jul-2026) consulta el Sheet real y agrega lo
+  // que haya registrado CUALQUIER OTRA persona/dispositivo para esa misma
+  // combinación -- así, si abres el formulario para probar mientras Lady
+  // digita desde otro equipo, ves lo suyo también, no solo lo tuyo.
   function renderizarLista() {
     const fecha = $('fecha').value;
     const area = $('area').value;
     const modulo = $('modulo').value;
     const todos = leerStorageHoy();
-    const filtrados = todos.filter(it => {
+    const locales = todos.filter(it => {
       const p = it.payload || {};
       return p.fecha === fecha && p.area === area && p.modulo === modulo;
     });
+    renderizarItems(locales);
+    if (!modulo || !fecha) return;
+
+    fetch(URL_APPS_SCRIPT + '?accion=registrosDelDia&area=' + encodeURIComponent(area) + '&modulo=' + encodeURIComponent(modulo) + '&fecha=' + encodeURIComponent(fecha))
+      .then(r => r.json())
+      .then(res => {
+        if ($('fecha').value !== fecha || $('area').value !== area || $('modulo').value !== modulo) return; // cambió mientras esperábamos
+        if (!res.ok) return;
+        const yaVistos = new Set(locales.map(it => it.hoja + '_' + it.fila));
+        const semana = $('semana').value;
+        const nIntegrantes = ((modulosPorArea[area] || []).find(m => m.modulo === modulo) || {}).integrantes || [];
+        const remotos = [];
+        (res.produccionModulo || []).forEach(f => {
+          if (yaVistos.has('PRODUCCION MODULO_' + f.fila)) return;
+          const payload = { tipo: 'produccionModulo', fecha, area, modulo, semana, clave: f.clave, subcategoria: f.subcategoria || '', cant: f.cant, stdManual: f.stdManual || '', improd: f.improd || '', apoyo: f.apoyo || '' };
+          const etiqueta = area === 'PLANCHA'
+            ? `Módulo ${modulo} (${nIntegrantes.length || '?'} integrantes) · ${f.cant} pdas · estilo ${f.clave} (${f.subcategoria})`
+            : `Módulo ${modulo} (${nIntegrantes.length || '?'} integrantes) · ${f.cant} pdas · estilo ${f.clave}`;
+          remotos.push({ tipo: 'produccionModulo', etiqueta, hoja: 'PRODUCCION MODULO', fila: f.fila, payload });
+        });
+        (res.sistemaDob || []).forEach(f => {
+          if (yaVistos.has('SISTEMA DOB_' + f.fila)) return;
+          const payload = { tipo: 'sistema', fecha, area, modulo, semana, estilo: f.estilo, cant: f.cant };
+          remotos.push({ tipo: 'sistema', etiqueta: `${modulo} · ${f.estilo} · ${f.cant} pdas (sistema)`, hoja: 'SISTEMA DOB', fila: f.fila, payload });
+        });
+        (res.auditoriaDob || []).forEach(f => {
+          if (yaVistos.has('AUDITORIA DOB_' + f.fila)) return;
+          const payload = { tipo: 'rechazo', fecha, area, modulo, semana, cliente: f.cliente, cant: f.cant, improd: f.improd || '', apoyo: f.apoyo || '' };
+          remotos.push({ tipo: 'rechazo', etiqueta: `${modulo} · ${f.cliente} · ${f.cant} rechazadas`, hoja: 'AUDITORIA DOB', fila: f.fila, payload });
+        });
+        if (remotos.length) renderizarItems(locales.concat(remotos));
+      })
+      .catch(() => {}); // si falla la consulta, se queda con lo local -- no rompe nada
+  }
+  function renderizarItems(items) {
     $('lista-items').innerHTML = '';
     entradasGuardadas = {};
-    contador = filtrados.length;
+    contador = items.length;
     $('contador-hoy').textContent = contador;
-    filtrados.forEach(it => crearItemDOM(it.tipo, it.etiqueta, it.hoja, it.fila, it.payload));
+    items.forEach(it => crearItemDOM(it.tipo, it.etiqueta, it.hoja, it.fila, it.payload));
   }
 
   // --- Zona de peligro: borrar todos los datos de prueba ---
